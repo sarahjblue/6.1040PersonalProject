@@ -2,13 +2,13 @@
 
 ## Password Authenticating + MIT Verification
 
-** concept ** PasswordAuthenticating
+**concept** PasswordAuthenticating
 
-** purpose ** identify users; prevent one user from pretending to be another; only permit account creation if the user is an MIT student
+**purpose** identify users; prevent one user from pretending to be another; only permit account creation if the user is an MIT student
 
-** principle ** after a user registers with a username and a password, they utilize their MIT email to confirm their account. from then, they can authenticate with that same username and password and be treated each time as the same user.
+**principle** after a user registers with a username and a password, they utilize their MIT email to confirm their account. from then, they can authenticate with that same username and password and be treated each time as the same user.
 
-** state: **
+**state:**
 a set of Users with a username String, a password String, a token String, where the token String is either a string or undefined, a confirmed boolean representing whether or not the account has been confirmed, and an email address ending with @mit.edu
 
 ** actions **
@@ -82,7 +82,7 @@ deleteConversation(conversation: Conversation, transactionComplete: Time)
 ** state **
 A collection of sale Items with a description String, a sold Boolean, and a transactionComplete Time
 
-** actions **
+**actions**
 
 post(item: Item, description: String)
 
