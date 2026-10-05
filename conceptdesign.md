@@ -41,7 +41,7 @@ authenticate(username: String, password: String): return (user: User)
 
 **purpose** allow users to message one another independently and keep track of what has been sent; deletes messages after the topic has been closed for 24 hours
 
-**principle** after a user starts a conversation with another user about an Item by sending an initial message, the other user can reply and the conversation persists until the Item transaction has been completed for 24 hours, then the Conversation deletes
+**principle** after a user starts a conversation with another user about an Item by sending an initial message, the other user can reply. deletes conversations a set time after their topic closes.
 
 **state** a set of Conversations with a topic Item, an initiator User, a recipient User, a messages sequence of Message, and a closedAt Time
 
@@ -77,11 +77,11 @@ closeConversation(topic: Item)
 &nbsp;&nbsp; **then** set closedAt of all conversations associated with topic to the current time
 
 
-deleteConversation(conversation: Conversation)
+purgeClosed()
 
-&nbsp;&nbsp; **where** closedAt time is greater than 24 hours ago
+&nbsp;&nbsp; **where** some Conversation has closedAt defined and closedAt earlier than 24 hours ago
 
-&nbsp;&nbsp; **then** delete the Conversation
+&nbsp;&nbsp; **then** delete every Conversation that meets these requirements and all Messages within
 
 
 
@@ -100,56 +100,56 @@ A collection of Items with a description String, a price string, Image, a seller
 
 post(name: String, description: String, price: String, seller: User, image: Image): (item: Item)
 
-**where** no item in Items matches the name, seller, and description as listed
+&nbsp;&nbsp; **where** no item in Items matches the name, seller, and description as listed
 
-**then** create a new Item and add item to the set of sale Items with the description, price, seller, and image. set status to available. set buyer to undefined and completedTime to undefined.
+&nbsp;&nbsp; **then** create a new Item and add item to the set of Items with the description, price, seller, and image. set status to available. set buyer to undefined and completedTime to undefined.
 
 
 claim(item: Item, claimer: User):
 
-**where** status is available and claimer is not the same as seller
+&nbsp;&nbsp; **where** status is available and claimer is not the same as seller
 
-**then** set status as claimed and set the buyer to claimer.
+&nbsp;&nbsp; **then** set status as claimed and set the buyer to claimer.
 
 
-edit(item: Item, description: String, price:String, image:image, user: User)
+edit(item: Item, description: String, price:String, image: Image, user: User)
 
-**where** the item is an existing item and user is the seller of item
+&nbsp;&nbsp; **where** the item is an existing item and user is the seller of item
 
-**then** edit the item to have the new description, new price, and/or new Image
+&nbsp;&nbsp; **then** edit the item to have the new description, new price, and/or new Image
 
 
 delete(item: Item, user: User)
 
-**where** the item is a valid Item, status is available, and user is the seller
+&nbsp;&nbsp; **where** the item is a valid Item, status is available, and user is the seller
 
-**then** remove the entire item from the set
+&nbsp;&nbsp; **then** remove the entire item from the set
 
 releaseClaim(item: Item, user: User)
 
-**where** the status of item is claimed and the buyer is the same as user
+&nbsp;&nbsp; **where** the status of item is claimed and the buyer is the same as user
 
-**then** set the status of item to available, and set the buyer to undefined.
+&nbsp;&nbsp; **then** set the status of item to available, and set the buyer to undefined.
 
 
 transactionCompleted(item:Item)
 
-**where** the status is claimed
+&nbsp;&nbsp; **where** the status is claimed
 
-**then** set status to completed and set completedTime to the current time.
+&nbsp;&nbsp; **then** set status to completed and set completedTime to the current time.
 
 
 getSeller(item: Item): (seller: User)
 
-**where** item is a valid item and status is available
+&nbsp;&nbsp; **where** item is a valid item and status is available
 
-**then** return the seller
+&nbsp;&nbsp; **then** return the seller
 
 available(): (arrayOf(item))
 
-**where** there are items in the set
+&nbsp;&nbsp; **where** there are items in the set
 
-**then** return the items to the user requesting
+&nbsp;&nbsp; **then** return the items to the user requesting
 
 
 
@@ -170,27 +170,27 @@ A set of Items with a tags set of Tag
 **actions**
 tag(item: Item, tag: Tag)
 
-**where** tag is included in Tags
+&nbsp;&nbsp; **where** tag is included in Tags
 
-**then** add item to Items if not present, add tag to item's tags
+&nbsp;&nbsp; **then** add item to Items if not present, add tag to item's tags
 
 untag(item: Item, tag: Tag)
 
-**where** item is included in the collection and tag is included in item's tags
+&nbsp;&nbsp; **where** item is included in the collection and tag is included in item's tags
 
-**then** remove tag from Item's tags
+&nbsp;&nbsp; **then** remove tag from Item's tags
 
-search(tags: set of Tags): (arrayof(Item))
+search(tags: set of Tags): (arrayOf(Item))
 
-**where** each tag in tags is contained within the valid tags
+&nbsp;&nbsp; **where** each tag in tags is contained within the valid tags
 
-**then** return a set of Items that include all tags within their set of Tags
+&nbsp;&nbsp; **then** return a set of Items that include all tags within their set of Tags
 
 clear(item: Item)
 
-**where** item is a valid Item
+&nbsp;&nbsp; **where** item is a valid Item
 
-**then** clear all of its tags and delete the item
+&nbsp;&nbsp; **then** clear all of its tags and delete the item
 
 
 ## Sessioning
@@ -205,110 +205,116 @@ clear(item: Item)
 
 start(user: User): (session: Session)
 
-**where** user is a valid User
+&nbsp;&nbsp; **where** user is a valid User
 
-**then** return a new session
+&nbsp;&nbsp; **then** return a new session
 
 sessionOpen(user: User, session: Session)
 
-**where** session exists and its associated user is user
+&nbsp;&nbsp; **where** session exists and its associated user is user
 
-**then** permit actions that user wishes
+&nbsp;&nbsp; **then** permit actions that user wishes
 
 
 ## Reactions
 
 **reaction** Register
-    **when** Requesting.register(username, email,password)
-    **then** MITUserVerification.register(username, email, password)
+
+&nbsp;&nbsp; **when** Requesting.register(username, email,password)
+
+&nbsp;&nbsp; **then** MITUserVerification.register(username, email, password)
 
 email the user token for confirmation
 
 
 **reaction** Login
 
-**when** Requesting.authenticate(username, password)
+&nbsp;&nbsp; **when** Requesting.authenticate(username, password)
 
-**where** MITUserVerification.authenticate(username, password)
+&nbsp;&nbsp; **where** MITUserVerification.authenticate(username, password)
 
-**then** Sessioning.start(user)
+&nbsp;&nbsp; **then** Sessioning.start(user)
 
 
 **reaction** PostItem
 
-**when** Requesting.post(session, description, price, image, tags)
+&nbsp;&nbsp; **when** Requesting.post(session, description, price, image, tags)
 
-**where** Sessioning
+&nbsp;&nbsp; **where** Sessioning
 
-**then** Inventory.post(item, description, price, seller: user, image)
+&nbsp;&nbsp; **then** Inventory.post(item, description, price, seller: user, image)
 
-Tagging.tag(item, tag) for each tag in tags
+&nbsp;&nbsp; Tagging.tag(item, tag) for each tag in tags
 
 
 **reaction** BuyItem
 
-**when** Requesting.claim(item, user)
+&nbsp;&nbsp; **when** Requesting.claim(item, user)
 
-**where** Sessioning.sessionOpen(user, session)
+&nbsp;&nbsp; **where** Sessioning.sessionOpen(user, session)
 
-**then** Inventory.claim(item, user)
+&nbsp;&nbsp; **then** Inventory.claim(item, user)
 
 
 **reaction** contactSeller
 
-**when** Requesting.contactSeller(session, item, content)
+&nbsp;&nbsp; **when** Requesting.contactSeller(session, item, content)
 
-**where** Sessioning.sessionOpen(user, session)
+&nbsp;&nbsp; **where** Sessioning.sessionOpen(user, session)
 
-Inventory.getSeller(item)
+&nbsp;&nbsp; Inventory.getSeller(item)
 
-**then** Messaging.startConversation(initiator: user, recipient: seller, topicItem: item, content)
+&nbsp;&nbsp; **then** Messaging.startConversation(initiator: user, recipient: seller, topicItem: item, content)
 
 
 **reaction** CompleteSale
 
-**when** Requesting.transactionCompleted(user, item)
+&nbsp;&nbsp; **when** Requesting.transactionCompleted(user, item)
 
-**where** Sessioning.sessionOpen(user, session)
+&nbsp;&nbsp; **where** Sessioning.sessionOpen(user, session)
 
-Inventory.getSeller(item) is the same as user
+&nbsp;&nbsp; Inventory.getSeller(item) is the same as user
 
-**then** Inventory.transactionCompleted(item)
+&nbsp;&nbsp; **then** Inventory.transactionCompleted(item)
 
-Messaging.closeConversation(item)
+&nbsp;&nbsp; Messaging.closeConversation(item)
 
-Tagging.clear(item)
+&nbsp;&nbsp; Tagging.clear(item)
 
 
-**reaction** DeleteMessages
+**reaction** PurgeClosed
 
-**where** time since transaction completed for any conversation
+&nbsp;&nbsp;  **when** via system, every hour
 
-**then** Messaging.deleteConversation(conversation)
+&nbsp;&nbsp; **where** time since transaction completed for any conversation
+
+&nbsp;&nbsp; **then** Messaging.purgeClosed()
 
 
 **reaction** DeleteItem
 
-**when** Request.delete(item, user)
+&nbsp;&nbsp; **when** Request.delete(item, user)
 
-**where** Sessioning.sessionOpen(user, session)
+&nbsp;&nbsp; **where** Sessioning.sessionOpen(user, session)
 
-**then** Inventory.delete(item, user)
+&nbsp;&nbsp; **then** Inventory.delete(item, user)
 
-Messaging.closeConversation(item)
+&nbsp;&nbsp; Messaging.closeConversation(item)
 
-Tagging.clear(item)
+&nbsp;&nbsp; Tagging.clear(item)
 
 
 
 ## A Brief Note
 
-- MITUserVerification controls access to all other concepts by permitting only members of the MIT community to access these concepts. This is verified by checking that the email the user confirms their account with is an MIT domain email.
+- MITUserVerification controls access to all other concepts by permitting only members of the MIT community to access these concepts. This is verified by checking that the email the user confirms their account with is an MIT domain email at registration via token in their email.
 
 - Tagging works alongside Inventory to provide sorting and easier searching for buyers who are looking through the inventory of items.
 
-- Item as appears in Messaging, Inventory, and Tagging are all the same items. Some item of type Item is used to ground Messaging, Inventory, and Tagging.
+- Item as appears in Messaging, Inventory, and Tagging are all the same items. Inventory creates Items in the claim action. Messaging and Inventory then use these Items.
 
-- Authentication is required for each new session, when the user must login to their account. Any time that the user performs some action, such as posting or claiming, the users authenticated status will be checked.
+- User as seen in Messaging and Inventory is dependent on the creation of User during MITUserVerification. When Messaging begins, the recipient User is required to be the seller of the item through the ContactSeller reaction.
 
-- The Messaging concept allows users to message one another about a specific item until the status of a transaction has been marked complete by the seller. Upon that completion, the messages will delete within the after 24 hours. The transaction being completed is a separate operation than finalizing a sale, because there is an in person element to sales that will require users to have access to their messages until the transaction is fully completed (including item handoff).
+- Authentication is required for each new session, when the user must login to their account. Any time that the user performs some action, such as posting or claiming, the users authenticated status will be checked via Sessioning. This use case shows how the MITUserVerification and Sessioning concepts work together to ensure a valid user.
+
+- The Messaging concept allows users to message one another about a specific item until the status of a transaction has been marked complete by the seller. Upon that completion, the messages will delete after 24 hours. The transaction being completed is a separate operation than finalizing a sale, because there is an in person element to sales that will require users to have access to their messages until the transaction is fully completed (including item handoff).
