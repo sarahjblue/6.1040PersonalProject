@@ -3,9 +3,24 @@
 
 ## Move out User
 
+Let's meet a stakeholder. His name is Aaron. Move out is right around the corner, and he realizes that he has two bags of clothing that he wants to get rid of. However, he also needs a few extra dollars to help pay for his plane ticket home.
 
+1) He comes home and creates an Infinite Clothing account using his MIT address.
 
-## Daily User Experience
-Let's meet one of our stakeholders. Her name is Jane and she is a student at MIT. Prior to coming to MIT, she loved thrifting. In the Cambridge area, she's found some cool thrift shops, but everything seems expensive at Boston prices, and as the semester picks up, she's finding it harder and harder to find time to get off campus. She does not want to have to pay for or wait for shipping from online thrift sources. Additionally, Jane has environmental concerns about the clothing industry and the lack of reuse. She sets her goal to only buy brand new absolute clothing necessities. Otherwise, she plans to buy everything second hand. She would love to be able to keep up with dormspam emails, but she finds that she often wastes time sifting through her email to find dormspam sales, then paging through sale items to only find things that are not her size. She's looking for a quick, cost effective, structured thrifting option available on campus.
+2) He quickly uploads every clothing item he has with an image and a name, tagging the items with colors and sizes in hopes that this helps buyers find his items.
 
-Then, Jane learns about Infinite Clothing. She creates her account using her MIT email and immediately begins shopping through the items available. She finds a shirt that looks like one she has seen on Pinterest, so she messages the seller about buying it. The shirt is listed at $8, but Jane negotiates for $5 over messages. She and the seller plan to meet in Lobby 7 to finish the transaction. On her way home from Hayden, where Jane was working on her homework, Jane exchanges money for the shirt in Lobby 7. The next week, Jane wears her new shirt to school and all of her friends compliment her.
+3) Over the next few days, his fellow classmates message him with questions about the items and pricing. They negotiate, and eventually agree on a time and place to exchange money and clothing.
+
+One of the buyers of Aaron's clothes is Jane. She is an MIT student who loves thrifting. She created her Infinite Clothing account because everything is so expensive in Boston and as finals season approaches, she does not have time to go thrifting.
+
+1) She searches through Infinite Clothing, using tags to find medium sized clothing.
+
+2) She finds a medium shirt that Aaron has listed for $5 and messages Aaron about buying it.
+
+3) Finally, Jane claims the item.
+
+4) They agree on a time and place and make the exchange.
+
+Jane walks away with the feeling that she prevented more clothing from ending up in the landfill. Aaron goes home to his dorm in Baker and marks the shirt as a completed transaction. After 24 hours, their messages delete and they both continue on with their lives.
+
+By the end of the week, Aaron has sold all but two of his clothing items and made $125 to help buy his ticket home. He also knows that he helped the environment by selling 30 pieces of clothing to classmates rather than throwing them into the trash.
