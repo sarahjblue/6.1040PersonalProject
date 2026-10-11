@@ -1,6 +1,5 @@
 # MIT User Verification
 
-
 ## Purpose
 
 identify users; prevent one user from pretending to be another; only permit account creation if the user is a member of the MIT community
@@ -21,8 +20,6 @@ a set of Users with
 ```
 
 ## Actions
-
-
 
 ```actions
 register(username: String, email: String, password: String): returns (user: User, token: String)
