@@ -1,6 +1,6 @@
 type Status = "AVAILABLE" | "CLAIMED" | "COMPLETED";
 
-type Item = {
+export type Item = {
     name: string;
     id: number;
     description?: string;

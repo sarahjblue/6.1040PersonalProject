@@ -5,20 +5,20 @@ let a signed-in user make requests without resending a password
 
 ## State
 ```state
-a set of Sessions with a user User
+a set of Sessions with an user User
 ```
 
 ## Actions
 
 ```actions
-start(user: User): (session: Session)
+start(user: User): returns (session: Session)
 
     where user is a valid User
 
     then
         return a new session
 
-sessionOpen(user: User, session: Session)
+sessionOpen(user: User): returns ()
 
     where session exists and its associated user is user
 
