@@ -6,6 +6,16 @@ allow users to message one another independently and keep track of what has been
 ## Principle
 after a user starts a conversation with another user about an Item by sending an initial message, the other user can reply; conversations are deleted 24 hours after their topic closes
 
+## Types
+
+```types
+   external User
+        a person who sells an item or buys an item
+
+    external Item
+        a thing that is being sold
+```
+
 ## State
 
 ```state

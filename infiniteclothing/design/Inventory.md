@@ -1,4 +1,4 @@
-# Inventory [User, Item]
+# Inventory
 
 ## Purpose
 
@@ -6,6 +6,16 @@ allows sellers to advertise their for sale items so that buyers can discover
 
 ## Principle
 a seller posts an item for sale. a buyer finds the item in the inventory. from there, a transaction occurs and the item is marked as sold
+
+## Types
+
+```types
+    external User
+        a person who sells an item or buys an item
+
+    external Item
+        a thing that is being sold
+```
 
 ## State
 ```state
