@@ -49,16 +49,38 @@ register(username: String, email: String, password: String): returns (user: User
 
 confirm(token: String): returns (user: User)
 
-    where token is a unique, secret String and there exists a User who has a token matching token
+    where token does not match that of any users
+
+    then
+        refuses INVALID_TOKEN "This token is not associated with any account."
+
+    where there exists a User who has a token matching token
 
     then
         remove the token from user
         mark the user as confirmed.
+        returns user
 
 
 authenticate(username: String, password: String): returns (user: User)
 
-    where username matches a User within the set and the password matches the one associated with the username and the confirmed boolean is set to true
+    where username is not in Users
+
+    then
+        refuses NO_USERNAME_FOUND "This username does not have an account."
+
+    where username is in Users and password does not match the associated password
+
+    then
+        refuses INCORRECT_PASSWORD "Incorrect password. Please try again."
+
+    where username is in Users, password matches, and the confirmed boolean is false
+
+    then
+        refuses NOT_CONFIRMED "Your account is not confirmed. Please confirm."
+
+
+    where username is in Users, password matches the one associated with the username, and the confirmed boolean is set to true
 
     then
         return the users account

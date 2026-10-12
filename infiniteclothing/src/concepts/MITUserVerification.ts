@@ -51,4 +51,38 @@ export class MITUserVerificationConcept {
 
         return [user, user.token];
     }
+
+    confirm(token: string) : User {
+        const hasToken = this.users.filter((user) => user.token === token);
+
+        if(!hasToken){
+            throw new Error("This token is not associated with any account.");
+        }
+
+        const user = hasToken[0];
+
+        user.token = "";
+        user.confirmed = true;
+
+        return user;
+    }
+
+    authenticate(username: string, password: string) : User {
+        const hasAccount = this.users.filter((user) => user.username === username);
+        const user = hasAccount[0];
+
+        if(!hasAccount){
+            throw new Error("This username does not have an account.");
+        }
+
+        if(user.password !== password){
+            throw new Error("Incorrect password. Please try again.");
+        }
+
+        if(!user.confirmed){
+            throw new Error("Your account is not confirmed. Please confirm.");
+        }
+
+        return user;
+    }
 }
