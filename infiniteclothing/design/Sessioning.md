@@ -11,17 +11,17 @@ a set of Sessions with an user User
 ## Actions
 
 ```actions
-start(user: User): returns (session: Session)
 
-    where user is a valid User
+sessionOpen(user: User): returns (session: Session)
 
-    then
-        return a new session
-
-sessionOpen(user: User): returns ()
-
-    where session exists and its associated user is user
+    where user does not have a session
 
     then
-        permit actions that user wishes
+        create a new session
+        return session
+
+    where user does have a session
+
+    then
+        return session
 ```
