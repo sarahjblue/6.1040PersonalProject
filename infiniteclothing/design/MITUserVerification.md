@@ -24,6 +24,21 @@ a set of Users with
 ```actions
 register(username: String, email: String, password: String): returns (user: User, token: String)
 
+    where username is already used
+
+    then
+        refuses USERNAME_ALREADY_USED "This username is already used. Choose a new one."
+
+    where email is not @mit.edu
+
+    then
+        refuses NOT_MIT "Your email is not an MIT email. Please use that email, otherwise you can not join Infinite Clothing."
+
+    where email is already associated with an account
+
+    then
+        refuses EMAIL_ALREADY_USED "This email already has an account."
+
     where username is a unique, unused String and the email is an @mit.edu email and is not associated with any other accounts
 
     then
