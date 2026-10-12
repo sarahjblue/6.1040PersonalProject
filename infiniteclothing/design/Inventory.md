@@ -13,91 +13,166 @@ a seller posts an item for sale. a buyer finds the item in the inventory. from t
     external User
         a person who sells an item or buys an item
 
-    external Item
-        a thing that is being sold
+    external Image
+        a pciture of an item, supplied by the user.
+
+    Status is AVAILABLE or CLAIMED or COMPLETED
+        represents the item's sale status: open to buyers, held by a buyer, or sold
 ```
 
 ## State
 ```state
 A collection of Items with
-    a description String,
-    a price string, Image,
+    a name String,
+    an optional description String,
+    an optional price string,
+    an image Image,
     a seller User,
-    a status enumeration (of [available, claimed, completed]), and
-    a buyer User.
+    a status Status, and
+    an optional buyer User.
+    Rule: buyer is present exactly when status is CLAIMED or COMPLETED, and is different from the seller.
 ```
 
 ## Actions
 
 ```actions
-post(name: String, description: String, price: String, seller: User, image: Image): (item: Item)
+post(name: String, description?: String, price?: String, seller: User, image: Image) : returns (item: Item)
 
-    where no item in Items matches the name, seller, and description as listed
-
-    then
-        create a new Item and add item to the set of Items with a name, optional description, optional price, seller, and image.
-        set status to available. set buyer to undefined.
-
-
-claim(item: Item, claimer: User):
-
-    where status is available and claimer is not the same as seller
+    where an item with the same name, seller and description is in Items
 
     then
-        set status as claimed and set the buyer to claimer.
+        refuses ITEM_ALREADY_POSTED "You already have posted an item with that name and description."
 
-
-edit(item: Item, (optional) description: String, (optional) price:String, (optional) image: Image, user: User)
-
-    where the item is an existing item and user is the seller of item, and at least a description, price, or image is being passed in
+    where no item has the same name, seller, and description is in Items
 
     then
-        edit the item to have the new description, new price, and/or new Image. the user only has to change one of these.
+        create a new Item with name, description, price, seller, and image.
+        set status to AVAILABLE. set buyer to undefined. return item.
 
 
-delete(item: Item, user: User)
+claim(item: Item, claimer: User) : returns ()
 
-    where the item is a valid Item, status is available, and user is the seller
+    where item is not in ITEMS
 
     then
-        remove the entire item from the set
+        refuses CLAIM_UNKNOWN_ITEM "There is no such item for sale."
+
+    where item is in Items and its status is not AVAILABLE
+
+    then
+        refuses ITEM_NOT_AVAILABLE_TO_CLAIM "This item can not be claimed at this time."
+
+    where item status is AVAILABLE and claimer is the seller of the item
+
+    then
+        refuses SELLER_CANNOT_CLAIM "You can not claim your own for sale item."
+
+    where status is available and claimer is not the seller of item
+
+    then
+        set status to CLAIMED and set its buyer to claimer. returns
 
 
-releaseClaim(item: Item, user: User)
+edit(item: Item, description?: String, price?: String, image?: Image, user: User) : returns ()
+
+    where item is not in Items
+
+    then
+        refuses EDIT_UNKNOWN_ITEM "There is no such item."
+
+    where item is in Items and user is not the seller
+
+    then
+        refuses NOT_SELLER_EDIT "You can not edit an item that you are not the seller of."
+
+    where item is in Items, user is the seller and none of description, price, or image have a value
+
+    then
+        refuses NO_EDIT_CHANGES "Give at least a description, price, or image to edit with."
+
+    where item is in Items, user is the seller, and at least one of description, price, or image has a value
+
+    then
+        replace each given field of item with its new value and leave the others. returns
+
+
+delete(item: Item, user: User) : returns ()
+
+    where item is not in Items
+
+    then
+        refuses DELETE_UNKNOWN_ITEM "This item already does not exist."
+
+    where item is in Items and user is not the seller of item
+
+    then
+        refuses NOT_SELLER_DELETE "You can not delete an item that you are not selling."
+
+    where item is in Items, status is COMPLETED, and user is the seller
+
+    then
+        refuses DELETE_NOT_COMPLETED "You can not delete an item where the transaction is completed."
+
+    where item is in Items and user is the seller
+
+    then
+        remove item from Items. returns
+
+
+releaseClaim(item: Item, user: User) : returns ()
+
+    where item is not in Items
+
+    then
+        refuses RELEASE_UNKNOWN_ITEM "There is no such item."
+
+    where item is in Items and its status is not CLAIMED
+
+    then
+        refuses RELEASE_UNCLAIMED "You can not release an unclaimed item."
+
+    where item is in Items, its status is CLAIMED, and user is not its buyer
+
+    then
+        refuses RELEASE_NOT_BUYER "You can not release a claim you did not make."
 
     where the status of item is claimed and user is the buyer
 
     then
-        set the status of item to available
+        set the status of item to AVAILABLE
         set the buyer to undefined
+        returns
 
 
-transactionCompleted(item:Item)
+transactionCompleted(item:Item) : returns ()
 
-    where the status is claimed
-
-    then
-        set status to completed.
-
-
-getSeller(item: Item): (seller: User)
-
-    where item is a valid item
+    where item is not in ITEMS
 
     then
-        return the seller
+        refuses COMPLETE_UNKNOWN_ITEM "There is no such item."
 
-available(): (arrayOf(item))
-
-    where there are items in the set
+    where item is in Items and its status is not CLAIMED
 
     then
-        return the items to the user requesting
+        refuses NOT_CLAIMED "Only a claimed item can be completed."
 
-removeFromInventory()   [System Action]
-
-    where item is marked as completed
+    where item is claimed
 
     then
-        delete the item from Inventory
+        set status to COMPLETED
+        returns
+```
+
+## Queries
+
+```queries
+_getSeller(item: Item): optional (seller: User)
+
+    answers the seller of item
+    answers no row for an unknown Item
+
+_available():many (item: Item, name: String, description?: String, price?: String, seller: User, image: Image)
+
+    answers every item whose status is AVAILABLE, in the order they were posted
+    answers no row when no item is available
 ```
