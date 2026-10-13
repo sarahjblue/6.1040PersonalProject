@@ -1,5 +1,3 @@
-import {Item} from "./Inventory.ts";
-
 type TagDefinition = {category: string, label: string};
 
 export const PREDEFINED_TAGS: readonly TagDefinition[] = [

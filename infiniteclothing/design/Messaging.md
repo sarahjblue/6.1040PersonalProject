@@ -14,6 +14,9 @@ after a user starts a conversation with another user about an Item by sending an
 
     external Item
         a thing that is being sold
+
+    ReadStatus is UNREAD or READ
+        whether the recipient of a message has seen it
 ```
 
 ## State
@@ -24,59 +27,108 @@ a set of Conversations with
     an initiator User,
     a recipient User,
     a messages sequence of Message, and
-    a closedAt Time
+    an optional closedAt DateTime
 
 a set of Messages with
     a sender User,
     a content String,
-    a sentAt Time, and
-    a read Boolean
+    a sentAt DateTime, and
+    a readStatus ReadStatus
 ```
 
 ## Actions
 
 ``` actions
-startConversation(initiator: User, recipient: User, topicItem: Item, content: String): returns (conversation: Conversation)
+startConversation(initiator: User, recipient: User, topic: Item, content: String): returns (conversation: Conversation)
 
-    where initiator and recipient are not the same people and, initiator and recipient do not have a preexisting Conversation about the topicItem
-
-    then
-        create Conversation with topicItem, initiator, recipient, and an empty array of messages
-        create a Message with the initiator, content, and sentAt time as the current time
-        set the Message read boolean to false, add it to messages in the newly created conversation
-        set closedAt to be undefined
-
-
-
-sendMessage(conversation: Conversation, sender: User, content: String): (message: Message)
-
-    where sender is the initiator or recipient of conversation
+    where initiator and recipient are the same people
 
     then
-        create a new message with this sender, the content, read as false, and sentAt as now
-        add the message to conversation
+        refuses SELF_MESSAGE "You can not message yourself."
 
-
-markRead(conversation: Conversation, reader: User)
-
-    where reader is the initiator or recipient of conversation
+    where initiator and recipient are different users and a conversation about topic already exists between them
 
     then
-        set read to true on every Message in conversation whose sender is not reader
+        refuses CONVERSATION_EXISTS "You already have a conversation about this item."
+
+    where initiator and recipient are different users, and initiator and recipient do not have a preexisting Conversation about the topicItem
+
+    then
+        add a new message with initiator as sender, content, sentAt as now, and readStatus as UNREAD
+        add a new conversation with topic, initiator, recipient, that message as its only message, and closedAt unset
+        returns conversation
 
 
-closeConversation(topic: Item)
+
+sendMessage(conversation: Conversation, sender: User, content: String): returns (message: Message)
+
+    where conversation is not in Conversations
+
+    then
+        refuses SEND_UNKNOWN_CONVERSATION "There is no conversation."
+
+    where conversation is in Conversations and sender is not the initiator or recipient of conversation
+
+    then
+        refuses INVALID_CONVERSATION "You are not a member of this conversation."
+
+
+    where conversation is in Conversations and sender is the initiator or recipient of conversation
+
+    then
+        add a new message with sender, content, sentAt as now, and readStatus UNREAD
+        append the message to the messages of conversation
+        returns message
+
+
+markRead(conversation: Conversation, reader: User): returns ()
+
+    where conversation is not in Conversations
+
+    then
+        refuses UNKNOWN_CONVERSATION "There is no such conversation."
+
+    where conversation is in Conversations and reader is not the initiator or recipient of conversation
+
+    then
+        refuses INVALID_CONVERSATION "You are not a member of this conversation."
+
+    where conversation is in Conversations and reader is the initiator or recipient of conversation
+
+    then
+        set readStatus to READ on every message of conversation whose sender is not reader
+        returns
+
+
+closeConversation(topic: Item): returns ()
 
     where true
 
     then
-        for every Conversation where the conversations topic is topic, and the closedAt variable of the conversation is undefined, set closedAt to the current time
+        set closedAt to now on every conversation about topic whose closedAt is unassigned
+        returns
 
 
-purgeClosed()  [System Action]
+purgeClosed(): returns ()
 
-    where some Conversation has closedAt defined and closedAt earlier than 24 hours ago
+    where true
 
     then
-        delete every Conversation that meets these requirements and all Messages within
+        remove every conversation whose closedAt is set and is more than 24 hours before now, together with all of its messages
+        returns
+```
+
+## Queries
+
+```queries
+
+    _messages(conversation: Conversation, reader: User) : many (message: Message, sender: User, content: String, sentAt: DateTime, readStatus: ReadStatus)
+
+    answers the messages of the conversation in the order they were sent
+    answers no rows when the conversation is unknown or reader is neither its initiator nor its recipient
+
+    _conversationsOf(user: User): many(conversation: Conversation, topic: Item, initiator: User, recipient: User, closedAt?: DateTime)
+
+    answers every conversation in which user is the initiator or the recipient
+
 ```
