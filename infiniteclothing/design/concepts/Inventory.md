@@ -14,7 +14,7 @@ external User
     a person who sells an item or buys an item
 
 external Image
-    a picture of an item, supplied by the user.
+    a picture of an item, supplied by the user
 
 Status is AVAILABLE or CLAIMED or COMPLETED
     represents the item's sale status: open to buyers, held by a buyer, or sold

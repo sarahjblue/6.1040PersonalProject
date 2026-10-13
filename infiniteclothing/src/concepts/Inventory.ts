@@ -33,7 +33,7 @@ const items = db.collection<Item>("inventory");
 
 export class InventoryConcept{
 
-    async post(name: string, seller: string, image: string, description?: string, price?: string): Promise<Item> {
+    async post({name, seller, image, description, price}: {name: string, seller: string, image: string, description?: string, price?: string}): Promise<Item> {
 
         const id = await nextId("inventory");
 
@@ -51,7 +51,7 @@ export class InventoryConcept{
         return item;
     }
 
-    async claim(item: Item, claimer: string) {
+    async claim({item, claimer}:{item: Item, claimer: string}): Promise<void>{
         const found = await items.findOne({id: item.id});
 
         if(!found){
@@ -72,7 +72,7 @@ export class InventoryConcept{
         }
     }
 
-    async edit(item: Item, user: string, description?: string, price?: string, image?: string) {
+    async edit({item, user, description, price, image}: {item: Item, user: string, description?: string, price?: string, image?: string}): Promise<void> {
         const found = await items.findOne({id: item.id});
 
         if(!found){
@@ -100,7 +100,7 @@ export class InventoryConcept{
         await items.updateOne({ id: item.id }, { $set: changes });
     }
 
-    async delete(item: Item, user: string): Promise<void> {
+    async delete({item, user}: {item: Item, user: string}): Promise<void> {
         const found = await items.findOne({id: item.id});
 
         if (!found){
@@ -118,7 +118,7 @@ export class InventoryConcept{
         await items.deleteOne({id: item.id});
     }
 
-    async releaseClaim(item: Item, user: string): Promise<void> {
+    async releaseClaim({item, user}: {item: Item, user: string}): Promise<void> {
         const result = await items.updateOne({id: item.id, status: "CLAIMED", buyer: user}, {$set: {status: "AVAILABLE"}, $unset: {buyer: ""}},);
 
         if(!result.modifiedCount){
@@ -126,7 +126,7 @@ export class InventoryConcept{
         }
     }
 
-    async transactionCompleted(item: Item): Promise<void> {
+    async transactionCompleted({item}: {item: Item}): Promise<void> {
         const result = await items.updateOne({id: item.id, status: "CLAIMED"}, {$set: {status: "COMPLETED"}});
 
         if(!result.modifiedCount){

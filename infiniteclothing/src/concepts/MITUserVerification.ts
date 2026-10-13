@@ -7,6 +7,14 @@ export type User = {
   email: string;
 };
 
+export class UsernameAlreadyUsed extends Error {}
+export class NotMIT extends Error {}
+export class EmailAlreadyUsed extends Error {}
+export class InvalidToken extends Error {}
+export class NoUsernameFound extends Error {}
+export class IncorrectPassword extends Error {}
+export class NotConfirmed extends Error {}
+
 type UserDocument = {
   username: string;
   email: string;
@@ -39,13 +47,13 @@ export class MITUserVerificationConcept {
     await ensureIndexes();
 
     if (await users.findOne({ username })) {
-      throw new Error("USERNAME_ALREADY_USED: This username is already used. Choose a new one.");
+      throw new UsernameAlreadyUsed("USERNAME_ALREADY_USED: This username is already used. Choose a new one.");
     }
     if (!email.toLowerCase().endsWith("@mit.edu")) {
-      throw new Error("NOT_MIT: Your email is not an MIT email. Please use that email, otherwise you can not join Infinite Clothing.");
+      throw new NotMIT("NOT_MIT: Your email is not an MIT email. Please use that email, otherwise you can not join Infinite Clothing.");
     }
     if (await users.findOne({ email })) {
-      throw new Error("EMAIL_ALREADY_USED: This email already has an account.");
+      throw new EmailAlreadyUsed("EMAIL_ALREADY_USED: This email already has an account.");
     }
 
     const token = crypto.randomUUID();
@@ -78,7 +86,7 @@ export class MITUserVerificationConcept {
       { returnDocument: "after" },
     );
 
-    if (!user) throw new Error("Invalid or already-used confirmation token.");
+    if (!user) throw new InvalidToken("Invalid or already-used confirmation token.");
     return publicUser(user);
   }
 
@@ -87,11 +95,11 @@ export class MITUserVerificationConcept {
 
     const user = await users.findOne({ username });
     if (!user || user.confirmed !== "CONFIRMED") {
-      throw new Error("Invalid credentials or account is not confirmed.");
+      throw new NotConfirmed("Invalid credentials or account is not confirmed.");
     }
 
     const valid = await Bun.password.verify(password, user.passwordHash);
-    if (!valid) throw new Error("Invalid credentials.");
+    if (!valid) throw new IncorrectPassword("Invalid credentials.");
 
     return publicUser(user);
   }

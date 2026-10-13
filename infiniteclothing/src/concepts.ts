@@ -6,9 +6,13 @@ import mitUserVerificationSpec from "../design/concepts/MITUserVerification.md" 
 import sessioningSpec from "../design/concepts/Sessioning.md" with { type: "text" };
 import taggingSpec from "../design/concepts/Tagging.md" with { type: "text" };
 
-import { MITUserVerificationConcept } from "./concepts/MITUserVerification.ts";
 import { SessioningConcept } from "./concepts/Sessioning.ts";
-import { TaggingConcept } from "./concepts/Tagging.ts";
+
+import {
+    TagNotExist,
+    TagCategoryTaken,
+    ClearUnknownItem,
+    TaggingConcept } from "./concepts/Tagging.ts";
 
 import {
   InventoryConcept,
@@ -39,6 +43,17 @@ import{
     SendUnknownConversation,
     InvalidConversation
 } from "./concepts/Messaging.ts";
+
+import{
+    MITUserVerificationConcept,
+    UsernameAlreadyUsed,
+    NotMIT,
+    EmailAlreadyUsed,
+    InvalidToken,
+    NoUsernameFound,
+    IncorrectPassword,
+    NotConfirmed
+} from "./concepts/MITUserVerification.ts";
 
 const inventory = registerConcept({
   class: InventoryConcept,
@@ -79,6 +94,16 @@ const messaging = registerConcept({
 const mitUserVerification = registerConcept({
   class: MITUserVerificationConcept,
   spec: mitUserVerificationSpec,
+  refusals: {
+    USERNAME_ALREADY_USED: UsernameAlreadyUsed,
+    NOT_MIT: NotMIT,
+    EMAIL_ALREADY_USED: EmailAlreadyUsed,
+    INVALID_TOKEN: InvalidToken,
+    NO_USERNAME_FOUND: NoUsernameFound,
+    INCORRECT_PASSWORD: IncorrectPassword,
+    NOT_CONFIRMED: NotConfirmed
+  }
+
 });
 
 const sessioning = registerConcept({
@@ -89,6 +114,11 @@ const sessioning = registerConcept({
 const tagging = registerConcept({
   class: TaggingConcept,
   spec: taggingSpec,
+  refusals:{
+    TAG_NOT_EXIST: TagNotExist,
+    TAG_CATEGORY_TAKEN: TagCategoryTaken,
+    CLEAR_UNKNOWN_ITEM: ClearUnknownItem
+  }
 });
 
 export const applicationConceptSet = conceptSet({

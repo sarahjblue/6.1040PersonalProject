@@ -8,6 +8,10 @@ export const PREDEFINED_TAGS: readonly TagDefinition[] = [
     .map((label) => ({ category: "color", label })),
 ];
 
+export class TagNotExist extends Error {};
+export class TagCategoryTaken extends Error {};
+export class ClearUnknownItem extends Error {};
+
 type TagDocument = TagDefinition & { _id: string };
 type ItemTagDocument = {
   item: string;
@@ -49,12 +53,12 @@ export class TaggingConcept {
     await ensureIndexes();
 
     const definition = await tags.findOne({ _id: tag });
-    if (!definition) throw new Error("TAG_NOT_EXIST: This tag does not exist.");
+    if (!definition) throw new TagNotExist("TAG_NOT_EXIST: This tag does not exist.");
 
     const existing = await itemTags.findOne({ item, category: definition.category });
     if (existing) {
       if (existing.label === definition.label) return;
-      throw new Error("TAG_CATEGORY_TAKEN: This item already has a tag in that category.");
+      throw new TagCategoryTaken("TAG_CATEGORY_TAKEN: This item already has a tag in that category.");
     }
 
     try {
@@ -66,7 +70,7 @@ export class TaggingConcept {
     } catch (error) {
       // The compound unique index also prevents concurrent category conflicts.
       if (typeof error === "object" && error !== null && "code" in error && error.code === 11000) {
-        throw new Error("TAG_CATEGORY_TAKEN: This item already has a tag in that category.");
+        throw new TagCategoryTaken("TAG_CATEGORY_TAKEN: This item already has a tag in that category.");
       }
       throw error;
     }
