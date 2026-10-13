@@ -6,16 +6,20 @@ const { Inventory } = concepts;
 
 const AvailableInventory = former(
   "available inventory",
-  (_input, { item, name, description, price, seller, image }) =>
+  (_input, { id, name, description, price, image, seller, status, buyer }) =>
     form({
-      items: each(Inventory._available({})).form({
-        item,
-        name,
-        description,
-        price,
-        seller,
-        image,
-      }),
+      items: each(
+        Inventory._available({}).is({
+          id,
+          name,
+          description,
+          price,
+          image,
+          seller,
+          status,
+          buyer,
+        }),
+      ).form({ id, name, description, price, image, seller, status, buyer }),
     }),
 );
 
@@ -38,7 +42,7 @@ const Claim = endpoint(
   "/inventory/claim",
   ({ item, claimer }) =>
     receive({ item, claimer })
-      .then(Inventory.claim({ item, claimer }))
+      .then(Inventory.claim({ item, claimer }).responds({}))
       .then(respond({})),
   { input: { required: ["item", "claimer"] } },
 );

@@ -43,7 +43,7 @@ function publicUser(user: UserDocument): User {
 }
 
 export class MITUserVerificationConcept {
-  async register(username: string, email: string, password: string): Promise<[User, string]> {
+  async register({username, email, password}: {username: string, email: string, password: string}): Promise<{user: User, token: string}> {
     await ensureIndexes();
 
     if (await users.findOne({ username })) {
@@ -74,10 +74,10 @@ export class MITUserVerificationConcept {
       throw error;
     }
 
-    return [publicUser(user), token];
+    return { user: publicUser(user), token };
   }
 
-  async confirm(token: string): Promise<User> {
+  async confirm({token}: {token: string}): Promise<{user:User}> {
     await ensureIndexes();
 
     const user = await users.findOneAndUpdate(
@@ -87,10 +87,10 @@ export class MITUserVerificationConcept {
     );
 
     if (!user) throw new InvalidToken("Invalid or already-used confirmation token.");
-    return publicUser(user);
+    return { user: publicUser(user) };
   }
 
-  async authenticate(username: string, password: string): Promise<User> {
+  async authenticate({username, password}: {username: string, password: string}): Promise<{user:User}> {
     await ensureIndexes();
 
     const user = await users.findOne({ username });
@@ -101,6 +101,6 @@ export class MITUserVerificationConcept {
     const valid = await Bun.password.verify(password, user.passwordHash);
     if (!valid) throw new IncorrectPassword("Invalid credentials.");
 
-    return publicUser(user);
+    return {user: publicUser(user)};
   }
 }

@@ -1,7 +1,32 @@
 import { endpoint, receive, respond } from "@mit-sdg/sync-engine/boundary";
 import { concepts } from "../concepts.ts";
+import { each, form, former } from "@mit-sdg/sync-engine/language";
 
 const { Messaging } = concepts;
+
+const ConversationList = former(
+  "conversations for a user",
+  ({ user }, { id, topic, initiator, recipient }) =>
+    form({
+      conversations: each(
+        Messaging._conversationsOf({ user }).is({
+          id,
+          topic,
+          initiator,
+          recipient,
+        }),
+      ).form({ id, topic, initiator, recipient }),
+    }),
+);
+
+const Conversation = endpoint(
+  "/messaging/conversations",
+  ({ user }) =>
+    receive({ user }).then(
+      respond({ result: ConversationList({ user }) }),
+    ),
+  { input: { required: ["user"] } },
+);
 
 const StartConversation = endpoint(
   "/messaging/startConversation",
@@ -9,9 +34,8 @@ const StartConversation = endpoint(
     receive({ initiator, recipient, topic, content })
       .then(
         Messaging.startConversation({ initiator, recipient, topic, content })
-            .responds({ conversation: "conversation" }),
-      )
-          .then(respond({ conversation: "conversation" })),
+            .responds({}),
+      ).then(respond({})),
   { input: { required: ["initiator", "recipient", "topic", "content"] } },
 );
 
@@ -19,8 +43,8 @@ const SendMessage = endpoint(
   "/messaging/sendMessage",
   ({ conversation, sender, content }) =>
     receive({ conversation, sender, content })
-      .then(Messaging.sendMessage({ conversation, sender, content }).responds({ message }))
-      .then(respond({ message })),
+      .then(Messaging.sendMessage({ conversation, sender, content }).responds({ }))
+      .then(respond({ Messages })),
   { input: { required: ["conversation", "sender", "content"] } },
 );
 
@@ -33,21 +57,38 @@ const MarkRead = endpoint(
   { input: { required: ["conversation", "reader"] } },
 );
 
+const MessageList = former(
+  "messages in a conversation",
+  ({ conversation, reader }, { id, sender, content, sentAt, readStatus }) =>
+    form({
+      messages: each(
+        Messaging._messages({ conversation, reader }).is({
+          id,
+          sender,
+          content,
+          sentAt,
+          readStatus,
+        }),
+      ).form({ id, sender, content, sentAt, readStatus }),
+    }),
+);
+
 const Messages = endpoint(
   "/messaging/messages",
   ({ conversation, reader }) =>
-    receive({ conversation, reader })
-      .then(respond({ messages: Messaging._messages({ conversation, reader }) })),
+    receive({ conversation, reader }).then(
+      respond({ result: MessageList({ conversation, reader }) }),
+    ),
   { input: { required: ["conversation", "reader"] } },
 );
 
-const Conversations = endpoint(
-  "/messaging/conversations",
-  ({ user }) =>
-    receive({ user })
-      .then(respond({ conversations: Messaging._conversationsOf({ user }) })),
-  { input: { required: ["user"] } },
-);
+// const Conversations = endpoint(
+//   "/messaging/conversations",
+//   ({ user }) =>
+//     receive({ user })
+//       .then(respond({ conversations: Messaging._conversationsOf({ user }) })),
+//   { input: { required: ["user"] } },
+// );
 
 const CloseConversation = endpoint(
   "/messaging/closeConversation",
@@ -69,7 +110,7 @@ export const composition = {
   SendMessage,
   MarkRead,
   Messages,
-  Conversations,
+  Conversation,
   CloseConversation,
   PurgeClosed,
 };

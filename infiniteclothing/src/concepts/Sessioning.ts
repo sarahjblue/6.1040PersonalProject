@@ -8,6 +8,7 @@ export type Session = {
 
 type SessionDocument = {
   username: string;
+  email: string;
   sessionId: string;
 };
 
@@ -26,27 +27,27 @@ function ensureIndexes(): Promise<void> {
 }
 
 export class SessioningConcept {
-  async sessionOpen(user: User): Promise<Session> {
+  async sessionOpen({user}: {user: User}): Promise<{session: Session}> {
     await ensureIndexes();
 
-    let stored = await sessions.findOne({ username: user.username });
-    if (!stored) {
-      try {
-        await sessions.insertOne({
-          username: user.username,
-          sessionId: crypto.randomUUID(),
-        });
-      } catch (error) {
-        // Another request may have created the session concurrently.
-        if (!(typeof error === "object" && error !== null && "code" in error && error.code === 11000)) {
-          throw error;
-        }
-      }
-      stored = await sessions.findOne({ username: user.username });
-    }
+    const sessionId = crypto.randomUUID();
+    const stored = await sessions.findOneAndUpdate(
+      { username: user.username },
+      {
+        $set: { email: user.email },
+        $setOnInsert: { sessionId },
+      },
+      { upsert: true, returnDocument: "after" },
+    );
 
     if (!stored) throw new Error("Could not open a session.");
-    return { id: stored.sessionId, user };
+
+    return {
+      session: {
+        id: stored.sessionId,
+        user: { username: stored.username, email: stored.email },
+      },
+    };
   }
 
   async _getUser(session: Session): Promise<User | undefined> {

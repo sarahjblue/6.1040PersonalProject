@@ -49,7 +49,7 @@ function ensureIndexes(): Promise<void> {
 }
 
 export class TaggingConcept {
-  async tag(item: string, tag: string): Promise<void> {
+  async tag({item, tag}: {item: string, tag: string}): Promise<void> {
     await ensureIndexes();
 
     const definition = await tags.findOne({ _id: tag });
@@ -76,7 +76,7 @@ export class TaggingConcept {
     }
   }
 
-  async untag(item: string, tag: string): Promise<void> {
+  async untag({item, tag}: {item: string, tag: string}): Promise<void> {
     await ensureIndexes();
 
     const definition = await tags.findOne({ _id: tag });
@@ -89,7 +89,7 @@ export class TaggingConcept {
     });
   }
 
-  async clear(item: string): Promise<void> {
+  async clear({item}: {item: string}): Promise<void> {
     await ensureIndexes();
     await itemTags.deleteMany({ item });
   }
