@@ -10,26 +10,26 @@ a seller posts an item for sale. a buyer finds the item in the inventory. from t
 ## Types
 
 ```types
-    external User
-        a person who sells an item or buys an item
+external User
+    a person who sells an item or buys an item
 
-    external Image
-        a pciture of an item, supplied by the user.
+external Image
+    a picture of an item, supplied by the user.
 
-    Status is AVAILABLE or CLAIMED or COMPLETED
-        represents the item's sale status: open to buyers, held by a buyer, or sold
+Status is AVAILABLE or CLAIMED or COMPLETED
+    represents the item's sale status: open to buyers, held by a buyer, or sold
 ```
 
 ## State
 ```state
-A collection of Items with
-    a name String,
-    an optional description String,
-    an optional price string,
-    an image Image,
-    a seller User,
-    a status Status, and
-    an optional buyer User.
+a set of Items with
+    a name String
+    an optional description String
+    an optional price String
+    an image Image
+    a seller User
+    a status Status
+    an optional buyer User
     Rule: buyer is present exactly when status is CLAIMED or COMPLETED, and is different from the seller.
 ```
 
@@ -46,8 +46,10 @@ post(name: String, description?: String, price?: String, seller: User, image: Im
     where no item has the same name, seller, and description is in Items
 
     then
-        create a new Item with name, description, price, seller, and image.
-        set status to AVAILABLE. set buyer to undefined. return item.
+        create a new Item with name, description, price, seller, and image
+        set status to AVAILABLE
+        set buyer to undefined
+        returns item
 
 
 claim(item: Item, claimer: User) : returns ()
@@ -70,7 +72,8 @@ claim(item: Item, claimer: User) : returns ()
     where status is available and claimer is not the seller of item
 
     then
-        set status to CLAIMED and set its buyer to claimer. returns
+        set status to CLAIMED and set its buyer to claimer.
+        returns
 
 
 edit(item: Item, description?: String, price?: String, image?: Image, user: User) : returns ()
@@ -93,7 +96,8 @@ edit(item: Item, description?: String, price?: String, image?: Image, user: User
     where item is in Items, user is the seller, and at least one of description, price, or image has a value
 
     then
-        replace each given field of item with its new value and leave the others. returns
+        replace each given field of item with its new value and leave the others.
+        returns
 
 
 delete(item: Item, user: User) : returns ()
@@ -116,7 +120,8 @@ delete(item: Item, user: User) : returns ()
     where item is in Items and user is the seller
 
     then
-        remove item from Items. returns
+        remove item from Items.
+        returns
 
 
 releaseClaim(item: Item, user: User) : returns ()

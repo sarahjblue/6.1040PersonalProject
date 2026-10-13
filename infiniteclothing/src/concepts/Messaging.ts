@@ -19,7 +19,7 @@ type Conversation = {
     closedAt?: number;
 };
 
-export class MessagningConcept{
+export class MessagingConcept{
     private readonly conversations = new Map<number, Conversation>();
     private readonly messages = new Map<number, Message>();
 

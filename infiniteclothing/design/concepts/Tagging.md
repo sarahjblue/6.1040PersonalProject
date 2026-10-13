@@ -1,4 +1,4 @@
-# Tagging [Item]
+# Tagging
 
 ## Purpose
 allow users to describe items with predefined attributes so buyers can narrow their search
@@ -8,16 +8,20 @@ a user selects predefined tags grouped by category, such as the sizes XS to XXL 
 
 ## Types
 
+```types
 external Item
     a thing that can be described with tags, owned by another concept.
+```
 
 ## State
-``` state
-A set of Tags with
-    a unique category String and
+```state
+a set of Tags with
+    a category String
     a label String
+    unique category and label
+    Rule: the Tags are predefined when the concept is created and no action adds or removes them.
 
-A set of Items with
+a set of Items with
     a tags set of Tag
 ```
 

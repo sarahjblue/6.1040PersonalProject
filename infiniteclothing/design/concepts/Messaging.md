@@ -1,4 +1,4 @@
-# Messaging [User, Item]
+# Messaging
 
 ## Purpose
 allow users to message one another independently and keep track of what has been sent; deletes messages after the topic has been closed for 24 hours
@@ -9,36 +9,36 @@ after a user starts a conversation with another user about an Item by sending an
 ## Types
 
 ```types
-   external User
-        a person who sells an item or buys an item
+external User
+    a person who sells an item or buys an item
 
-    external Item
-        a thing that is being sold
+external Item
+    a thing that is being sold
 
-    ReadStatus is UNREAD or READ
-        whether the recipient of a message has seen it
+ReadStatus is UNREAD or READ
+    whether the recipient of a message has seen it
 ```
 
 ## State
 
 ```state
 a set of Conversations with
-    a topic Item,
-    an initiator User,
-    a recipient User,
-    a messages sequence of Message, and
+    a topic Item
+    an initiator User
+    a recipient User
+    a messages seq of Message
     an optional closedAt DateTime
 
 a set of Messages with
-    a sender User,
-    a content String,
-    a sentAt DateTime, and
+    a sender User
+    a content String
+    a sentAt DateTime
     a readStatus ReadStatus
 ```
 
 ## Actions
 
-``` actions
+```actions
 startConversation(initiator: User, recipient: User, topic: Item, content: String): returns (conversation: Conversation)
 
     where initiator and recipient are the same people
@@ -122,13 +122,12 @@ purgeClosed(): returns ()
 
 ```queries
 
-    _messages(conversation: Conversation, reader: User) : many (message: Message, sender: User, content: String, sentAt: DateTime, readStatus: ReadStatus)
+_messages(conversation: Conversation, reader: User) : many (message: Message, sender: User, content: String, sentAt: DateTime, readStatus: ReadStatus)
 
     answers the messages of the conversation in the order they were sent
     answers no rows when the conversation is unknown or reader is neither its initiator nor its recipient
 
-    _conversationsOf(user: User): many(conversation: Conversation, topic: Item, initiator: User, recipient: User, closedAt?: DateTime)
+_conversationsOf(user: User): many(conversation: Conversation, topic: Item, initiator: User, recipient: User, closedAt?: DateTime)
 
     answers every conversation in which user is the initiator or the recipient
-
 ```

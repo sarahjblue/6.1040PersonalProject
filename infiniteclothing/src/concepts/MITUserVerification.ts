@@ -1,9 +1,11 @@
+export type Confirmation = "CONFIRMED" | "UNCONFIRMED";
+
 export type User = {
     username: string,
     email: string,
     password: string,
     token: string,
-    confirmed: boolean
+    confirmed: Confirmation
 }
 
 
@@ -44,7 +46,7 @@ export class MITUserVerificationConcept {
             email,
             password,
             token: this.generateRandomString(10),
-            confirmed: false
+            confirmed: "UNCONFIRMED"
         };
 
         this.users.push(user);
@@ -62,7 +64,7 @@ export class MITUserVerificationConcept {
         const user = hasToken[0];
 
         user.token = "";
-        user.confirmed = true;
+        user.confirmed = "CONFIRMED";
 
         return user;
     }

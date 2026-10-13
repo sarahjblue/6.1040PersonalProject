@@ -1,4 +1,4 @@
-# MIT User Verification
+# MITUserVerification
 
 ## Purpose
 
@@ -8,15 +8,21 @@ identify users; prevent one user from pretending to be another; only permit acco
 
 after a user registers with a username and a password, they utilize their MIT email to confirm their account. from then, they can authenticate with that same username and password and be treated each time as the same user.
 
+## Types
+```types
+Confirmation is UNCONFIRMED or CONFIRMED
+    whether the owner of an account has proven control of its MIT email
+```
+
 ## State
 
 ```state
 a set of Users with
-    a username String,
-    a password String,
-    a token String, where the token String is either a string or undefined,
-    a confirmed boolean representing whether or not the account has been confirmed, and
-    an email address ending with @mit.edu
+    a unique username String
+    a password String
+    an optional token String
+    a confirmation Confirmation
+    a unique email String
 ```
 
 ## Actions
@@ -45,6 +51,7 @@ register(username: String, email: String, password: String): returns (user: User
         create a new User with the username, email, and password
         create a token
         Mark the user as unconfirmed
+        returns user, token
 
 
 confirm(token: String): returns (user: User)
@@ -83,5 +90,10 @@ authenticate(username: String, password: String): returns (user: User)
     where username is in Users, password matches the one associated with the username, and the confirmed boolean is set to true
 
     then
-        return the users account
+        returns user
+```
+
+## Queries
+
+```queries
 ```
