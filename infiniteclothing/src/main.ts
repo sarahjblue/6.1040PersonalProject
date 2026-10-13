@@ -1,4 +1,11 @@
 import { assembleApplication } from "./assembly.ts";
+import {disconnectDatabase, connectDatabase} from "./db.ts";
 
-const application = assembleApplication();
-console.log(JSON.stringify(Object.keys(application.publicInterface.routes).sort()));
+await connectDatabase();
+
+try{
+    const application = assembleApplication();
+    console.log(JSON.stringify(Object.keys(application.publicInterface.routes).sort()));
+} finally {
+    await disconnectDatabase();
+}

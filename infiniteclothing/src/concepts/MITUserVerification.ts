@@ -1,90 +1,98 @@
+import { db } from "../db.ts";
+
 export type Confirmation = "CONFIRMED" | "UNCONFIRMED";
 
 export type User = {
-    username: string,
-    email: string,
-    password: string,
-    token: string,
-    confirmed: Confirmation
+  username: string;
+  email: string;
+};
+
+type UserDocument = {
+  username: string;
+  email: string;
+  passwordHash: string;
+  token?: string;
+  confirmed: Confirmation;
+};
+
+const users = db.collection<UserDocument>("users");
+let indexesReady: Promise<void> | undefined;
+
+function ensureIndexes(): Promise<void> {
+  indexesReady ??= Promise.all([
+    users.createIndex({ username: 1 }, { unique: true }),
+    users.createIndex({ email: 1 }, { unique: true }),
+    users.createIndex({ token: 1 }, { sparse: true, unique: true }),
+  ]).then(() => undefined).catch((error: unknown) => {
+    indexesReady = undefined;
+    throw error;
+  });
+  return indexesReady;
 }
 
+function publicUser(user: UserDocument): User {
+  return { username: user.username, email: user.email };
+}
 
 export class MITUserVerificationConcept {
-    private readonly users: User[] = [];
+  async register(username: string, email: string, password: string): Promise<[User, string]> {
+    await ensureIndexes();
 
-    private generateRandomString(length: number): string {
-        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        let result = '';
-        for (let i = 0; i < length; i++) {
-            const randomIndex = Math.floor(Math.random() * characters.length);
-            result += characters.charAt(randomIndex);
-        }
-        return result;
+    if (await users.findOne({ username })) {
+      throw new Error("USERNAME_ALREADY_USED: This username is already used. Choose a new one.");
+    }
+    if (!email.toLowerCase().endsWith("@mit.edu")) {
+      throw new Error("NOT_MIT: Your email is not an MIT email. Please use that email, otherwise you can not join Infinite Clothing.");
+    }
+    if (await users.findOne({ email })) {
+      throw new Error("EMAIL_ALREADY_USED: This email already has an account.");
     }
 
+    const token = crypto.randomUUID();
+    const user: UserDocument = {
+      username,
+      email,
+      passwordHash: await Bun.password.hash(password),
+      token,
+      confirmed: "UNCONFIRMED",
+    };
 
-    register(username: string, email: string, password: string) : [User, string] {
-
-        const duplicateUsername = this.users.filter((user) => user.username === username);
-        if(duplicateUsername) {
-            throw new Error("This username is already used. Choose a new one.");
-        }
-
-        const duplicateEmail = this.users.filter((user) => user.email === email);
-        if(duplicateEmail){
-            throw new Error("This email already has an associated account.");
-        }
-
-        if(!email.includes("@mit.edu")){
-            throw new Error("This email is not an MIT email. Please use an MIT email, otherwise you will not be able to join Infinite Clothing.");
-        }
-
-
-
-        const user: User = {
-            username,
-            email,
-            password,
-            token: this.generateRandomString(10),
-            confirmed: "UNCONFIRMED"
-        };
-
-        this.users.push(user);
-
-        return [user, user.token];
+    try {
+      await users.insertOne(user);
+    } catch (error) {
+      if (typeof error === "object" && error !== null && "code" in error && error.code === 11000) {
+        throw new Error("Username or email is already used.");
+      }
+      throw error;
     }
 
-    confirm(token: string) : User {
-        const hasToken = this.users.filter((user) => user.token === token);
+    return [publicUser(user), token];
+  }
 
-        if(!hasToken){
-            throw new Error("This token is not associated with any account.");
-        }
+  async confirm(token: string): Promise<User> {
+    await ensureIndexes();
 
-        const user = hasToken[0];
+    const user = await users.findOneAndUpdate(
+      { token, confirmed: "UNCONFIRMED" },
+      { $set: { confirmed: "CONFIRMED" }, $unset: { token: "" } },
+      { returnDocument: "after" },
+    );
 
-        user.token = "";
-        user.confirmed = "CONFIRMED";
+    if (!user) throw new Error("Invalid or already-used confirmation token.");
+    return publicUser(user);
+  }
 
-        return user;
+  async authenticate(username: string, password: string): Promise<User> {
+    await ensureIndexes();
+
+    const user = await users.findOne({ username });
+    if (!user || user.confirmed !== "CONFIRMED") {
+      throw new Error("Invalid credentials or account is not confirmed.");
     }
 
-    authenticate(username: string, password: string) : User {
-        const hasAccount = this.users.filter((user) => user.username === username);
-        const user = hasAccount[0];
+    const valid = await Bun.password.verify(password, user.passwordHash);
+    if (!valid) throw new Error("Invalid credentials.");
 
-        if(!hasAccount){
-            throw new Error("This username does not have an account.");
-        }
-
-        if(user.password !== password){
-            throw new Error("Incorrect password. Please try again.");
-        }
-
-        if(!user.confirmed){
-            throw new Error("Your account is not confirmed. Please confirm.");
-        }
-
-        return user;
-    }
+    return publicUser(user);
+  }
 }

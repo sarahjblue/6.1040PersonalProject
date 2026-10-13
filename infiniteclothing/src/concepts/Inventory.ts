@@ -1,3 +1,5 @@
+import {db, nextId} from "../db.ts";
+
 type Status = "AVAILABLE" | "CLAIMED" | "COMPLETED";
 
 export type Item = {
@@ -11,28 +13,30 @@ export type Item = {
     buyer?: string;
 };
 
+export class ItemAlreadyPosted extends Error {}
+export class ClaimUnknownItem extends Error {}
+export class ItemNotAvailableToClaim extends Error {}
+export class SellerCannotClaim extends Error {}
+export class EditUnknownItem extends Error {}
+export class NotSellerEdit extends Error {}
+export class NoEditChanges extends Error {}
+export class DeleteUnknownItem extends Error {}
+export class NotSellerDelete extends Error {}
+export class DeleteNotCompleted extends Error {}
+export class ReleaseUnknownItem extends Error {}
+export class ReleaseUnclaimed extends Error {}
+export class ReleaseNotBuyer extends Error {}
+export class CompleteUnknownItem extends Error {}
+export class NotClaimed extends Error {}
+
+const items = db.collection<Item>("inventory");
 
 export class InventoryConcept{
-    private readonly items: Item[] = [];
-    private idCounter: number = 0;
 
-    private find(id: number): Item | undefined {
-        const found = this.items.filter((item) => (item.id === id));
-        if(found){
-            return found[0];
-        }
+    async post(name: string, seller: string, image: string, description?: string, price?: string): Promise<Item> {
 
-        return undefined;
-    }
+        const id = await nextId("inventory");
 
-    post(name: string, seller: string, image: string, description?: string, price?: string): Item {
-
-        const duplicates = this.items.filter((item) => !(item.seller === seller)).filter((item) => !(item.description === description)).filter((item) => (item.name === name));
-        if (duplicates.length > 0){
-            throw new Error("This item already exists.");
-        }
-
-        const id = this.idCounter;
         const item: Item = {
             name,
             id,
@@ -43,119 +47,98 @@ export class InventoryConcept{
             status: "AVAILABLE"
         };
 
-        this.items.push(item);
-
-        this.idCounter++;
+        await items.insertOne(item);
         return item;
     }
 
-    claim(item: Item, claimer: string) {
-        const itemID = item.id;
-
-        const found = this.find(itemID);
+    async claim(item: Item, claimer: string) {
+        const found = await items.findOne({id: item.id});
 
         if(!found){
-            throw new Error("There is no such item for sale.");
+            throw new ClaimUnknownItem("There is no such item for sale.");
         }
 
         if(found.status !== "AVAILABLE"){
-            throw new Error("This item can not be claimed at this time.");
+            throw new ItemNotAvailableToClaim("This item can not be claimed at this time.");
         }
 
         if(found.seller === claimer){
-            throw new Error("You can not claim your own for sale item.");
+            throw new SellerCannotClaim("You can not claim your own for sale item.");
         }
 
-        found.buyer = claimer;
-        found.status = "CLAIMED";
+        const result = await items.updateOne({id: item.id, status: "AVAILABLE"}, {$set: {status: "CLAIMED", buyer: claimer}});
+        if (!result.modifiedCount){
+            throw new ItemNotAvailableToClaim("This item can not be claimed at this time.");
+        }
     }
 
-    edit(item: Item, user: string, description?: string, price?: string, image?: string) {
-        const found = this.find(item.id);
+    async edit(item: Item, user: string, description?: string, price?: string, image?: string) {
+        const found = await items.findOne({id: item.id});
 
         if(!found){
-            throw new Error("There is no such item available to edit.");
+            throw new EditUnknownItem("There is no such item available to edit.");
         }
 
         if(found.seller !== user){
-            throw new Error("You can not edit an item that you are not the seller of.");
+            throw new NotSellerEdit("You can not edit an item that you are not the seller of.");
         }
 
-        if(!description && !price && !image){
-            throw new Error("You must give at least a description, price, or image to edit with.");
+        const changes: Partial<Item> = {};
+        if (description !== undefined){
+            changes.description = description;
+        }
+        if (price !== undefined) {
+            changes.price = price;
+        }
+        if (image !== undefined) {
+            changes.image = image;
+        }
+        if (!Object.keys(changes).length) {
+            throw new NoEditChanges("You must give at least a description, price, or image to edit with.");
         }
 
-        if(description){
-            found.description = description;
-        }
-
-        if(price){
-            found.price = price;
-        }
-
-        if(image){
-            found.image = image;
-        }
+        await items.updateOne({ id: item.id }, { $set: changes });
     }
 
-    delete(item: Item, user: string) {
-        const found = this.find(item.id);
+    async delete(item: Item, user: string): Promise<void> {
+        const found = await items.findOne({id: item.id});
 
         if (!found){
-            throw new Error("This item already does not exist.");
+            throw new DeleteUnknownItem("This item already does not exist.");
         }
 
         if(found.seller !== user){
-            throw new Error("You can not delete an item that you are not selling.");
+            throw new NotSellerDelete("You can not delete an item that you are not selling.");
         }
 
         if(found.status === "COMPLETED"){
-            throw new Error("You can not delete an item with a completed transaction.");
+            throw new DeleteNotCompleted("You can not delete an item with a completed transaction.");
         }
 
-        const index = this.items.findIndex((item) => (item.id === found.id));
-        this.items.splice(0, index).concat(this.items.splice(index+1));
+        await items.deleteOne({id: item.id});
     }
 
-    releaseClaim(item: Item, user: string) {
-        const found = this.find(item.id);
+    async releaseClaim(item: Item, user: string): Promise<void> {
+        const result = await items.updateOne({id: item.id, status: "CLAIMED", buyer: user}, {$set: {status: "AVAILABLE"}, $unset: {buyer: ""}},);
 
-        if(!found){
-            throw new Error("There is no such item.");
+        if(!result.modifiedCount){
+            throw new ReleaseNotBuyer("You can not release this claim.");
         }
-
-        if(found.status !== "CLAIMED"){
-            throw new Error("You can not release an unclaimed item.");
-        }
-
-        if(found.buyer !== user){
-            throw new Error("You can not release a claim that you did not make.");
-        }
-
-        found.status = "AVAILABLE";
-        found.buyer = "";
     }
 
-    transactionCompleted(item: Item) {
-        const found = this.find(item.id);
+    async transactionCompleted(item: Item): Promise<void> {
+        const result = await items.updateOne({id: item.id, status: "CLAIMED"}, {$set: {status: "COMPLETED"}});
 
-        if(!found){
-            throw new Error("This item does not exist.");
+        if(!result.modifiedCount){
+            throw new CompleteUnknownItem("This item does not exist or is not in a claimable state.");
         }
-
-        if(found.status !== "CLAIMED"){
-            throw new Error("Only a claimed item can be completed.");
-        }
-
-        found.status = "COMPLETED";
     }
 
-    getSeller(item: Item) : string | undefined {
-        const found = this.find(item.id);
-        return found?.seller
+    async _getSeller(item: Item): Promise<string | undefined> {
+        return (await items.findOne({id: item.id}))?.seller;
     }
 
-    available() : Item[] {
-        return this.items.filter((item) => item.status === "AVAILABLE");
+    async _available() : Promise<Item[]> {
+        return (await items.find({status: "AVAILABLE"})).toArray();
     }
 }

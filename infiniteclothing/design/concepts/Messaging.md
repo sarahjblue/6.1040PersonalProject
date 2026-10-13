@@ -72,6 +72,10 @@ sendMessage(conversation: Conversation, sender: User, content: String): returns 
     then
         refuses INVALID_CONVERSATION "You are not a member of this conversation."
 
+    where conversation is no longer in Conversations
+
+    then
+        refuses CONVERSATION_CLOSED "This conversation has been closed."
 
     where conversation is in Conversations and sender is the initiator or recipient of conversation
 
@@ -91,7 +95,7 @@ markRead(conversation: Conversation, reader: User): returns ()
     where conversation is in Conversations and reader is not the initiator or recipient of conversation
 
     then
-        refuses INVALID_CONVERSATION "You are not a member of this conversation."
+        refuses NOT_CONVERSATION_MEMBER "You are not a member of this conversation."
 
     where conversation is in Conversations and reader is the initiator or recipient of conversation
 

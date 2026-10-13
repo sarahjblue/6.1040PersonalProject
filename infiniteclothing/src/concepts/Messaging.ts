@@ -1,155 +1,183 @@
-const PURGE_AFTER = 24 * 60 * 60 * 1000;
+import { db, nextId } from "../db.ts";
 
+const PURGE_AFTER = 24 * 60 * 60 * 1000;
 type ReadStatus = "UNREAD" | "READ";
 
-type Message = {
-    message: number;
-    sender: string;
-    content: string;
-    sentAt: number;
-    readStatus: ReadStatus;
+type MessageDocument = {
+  id: number;
+  conversation: number;
+  sender: string;
+  content: string;
+  sentAt: number;
+  readStatus: ReadStatus;
 };
 
-type Conversation = {
-    conversation: number;
-    topic: string;
+type ConversationDocument = {
+  id: number;
+  topic: string;
+  initiator: string;
+  recipient: string;
+  closedAt?: number;
+};
+
+export class SelfMessage extends Error {}
+export class ConversationClosed extends Error {}
+export class NotConversationMember extends Error {}
+export class UnknownConversation extends Error {}
+export class ConversationExists extends Error {}
+export class SendUnknownConversation extends Error {}
+export class InvalidConversation extends Error {}
+
+const conversations = db.collection<ConversationDocument>("conversations");
+const messages = db.collection<MessageDocument>("messages");
+let indexesReady: Promise<void> | undefined;
+
+function ensureIndexes(): Promise<void> {
+  indexesReady ??= Promise.all([
+    conversations.createIndex({ id: 1 }, { unique: true }),
+    conversations.createIndex({ topic: 1, closedAt: 1 }),
+    messages.createIndex({ id: 1 }, { unique: true }),
+    messages.createIndex({ conversation: 1, sentAt: 1 }),
+  ]).then(() => undefined).catch((error: unknown) => {
+    indexesReady = undefined;
+    throw error;
+  });
+  return indexesReady;
+}
+
+function isMember(conversation: ConversationDocument, user: string): boolean {
+  return conversation.initiator === user || conversation.recipient === user;
+}
+
+export class MessagingConcept {
+  async startConversation({
+    initiator,
+    recipient,
+    topic,
+    content,
+  }: {
     initiator: string;
     recipient: string;
-    messages: number[];
-    closedAt?: number;
-};
+    topic: string;
+    content: string;
+  }): Promise<{ conversation: number }> {
+    await ensureIndexes();
+    if (initiator === recipient) throw new SelfMessage("You cannot start a conversation with yourself.");
 
-export class MessagingConcept{
-    private readonly conversations = new Map<number, Conversation>();
-    private readonly messages = new Map<number, Message>();
+    const id = await nextId("conversations");
+    await conversations.insertOne({ id, topic, initiator, recipient });
 
-    private messageId: number = 0;
+    await messages.insertOne({
+      id: await nextId("messages"),
+      conversation: id,
+      sender: initiator,
+      content,
+      sentAt: Date.now(),
+      readStatus: "UNREAD",
+    });
 
-    private isMember(conversation: Conversation, user: string): boolean {
-        return conversation.initiator === user || conversation.recipient === user;
+    return { conversation: id };
+  }
+
+  async sendMessage({
+    conversation,
+    sender,
+    content,
+  }: {
+    conversation: number;
+    sender: string;
+    content: string;
+  }): Promise<{ message: number }> {
+    await ensureIndexes();
+
+    const thread = await conversations.findOne({ id: conversation });
+    if (!thread || !isMember(thread, sender)) throw new NotConversationMember("You are not a member of this conversation.");
+    if (thread.closedAt !== undefined) throw new ConversationClosed("This conversation is closed.");
+
+    const id = await nextId("messages");
+    await messages.insertOne({
+      id,
+      conversation,
+      sender,
+      content,
+      sentAt: Date.now(),
+      readStatus: "UNREAD",
+    });
+    return { message: id };
+  }
+
+  async markRead({ conversation, reader }: { conversation: number; reader: string }): Promise<void> {
+    await ensureIndexes();
+
+    const thread = await conversations.findOne({ id: conversation });
+    if (!thread){
+        throw new UnknownConversation("This conversation does not exist.");
     }
 
-    private addMessage(sender: string, content: string): Message {
-        const message: Message = {
-            message: this.messageId,
-            sender,
-            content,
-            sentAt: Date.now(),
-            readStatus: "UNREAD"
-        };
-        this.messageId++;
-        this.messages.set(message.message, message);
-        return message;
+    if(!isMember(thread, reader)) {
+        throw new NotConversationMember("You are not a member of this conversation.");
     }
 
-    startConversation({initiator, recipient, topic, content}: {initiator: string, recipient: string, topic: string, content: string}) {
-        if (initiator === recipient) {
-            throw new Error("You can not message yourself.");
-        }
+    await messages.updateMany(
+      { conversation, sender: { $ne: reader }, readStatus: "UNREAD" },
+      { $set: { readStatus: "READ" } },
+    );
+  }
 
-        const exists = [...this.conversations.values()].some((existing) => existing.topic === topic && ((existing.initiator === initiator && existing.recipient === recipient) || (existing.initiator === recipient && existing.recipient === initiator)));
-        if(exists){
-            throw new Error("You already have a conversation about this item.");
-        }
+  async _messages({
+    conversation,
+    reader,
+  }: {
+    conversation: number;
+    reader: string;
+  }): Promise<Array<MessageDocument & { sender: string }>> {
+    await ensureIndexes();
 
-        const first = this.addMessage(initiator, content);
-
-        const conversation = this.messageId;
-        this.messageId ++;
-        this.conversations.set(conversation, {
-            conversation,
-            topic,
-            initiator,
-            recipient,
-            messages: [first.message],
-        });
-        return {conversation};
+    const thread = await conversations.findOne({ id: conversation });
+    if (!thread){
+        throw new UnknownConversation("This conversation does not exist.");
     }
 
-    sendMessage({conversation, sender, content}: {conversation: number, sender: string, content: string}){
-        const found = this.conversations.get(conversation);
-        if (found === undefined){
-            throw new Error("There is no such conversation");
-        }
-
-        if(!this.isMember(found, sender)){
-            throw new Error("You are not a member of this conversation");
-        }
-
-        const message = this.addMessage(sender, content);
-        found.messages.push(message.message);
-        return {message: message.message};
+    if(!isMember(thread, reader)) {
+        throw new NotConversationMember("You are not a member of this conversation.");
     }
 
-    markRead({conversation, reader} : {conversation: number, reader: string}){
-        const found = this.conversations.get(conversation);
-        if(found === undefined){
-            throw new Error("There is no conversation.");
-        }
+    return messages.find(
+      { conversation },
+      { projection: { _id: 0 } },
+    ).sort({ sentAt: 1 }).toArray();
+  }
 
-        if(!this.isMember(found, reader)){
-            throw new Error("You are not a member of this conversation.");
-        }
+  async _conversationsOf({ user }: { user: string }): Promise<ConversationDocument[]> {
+    await ensureIndexes();
 
-        for (const id of found.messages){
-            const message = this.messages.get(id);
-            if (message !== undefined && message.sender !== reader) {
-                message.readStatus = "READ";
-            }
-        }
-    }
+    return conversations.find(
+      { $or: [{ initiator: user }, { recipient: user }] },
+      { projection: { _id: 0 } },
+    ).toArray();
+  }
 
-    closeConversation({topic}: {topic: string}){
-        const closedAt = Date.now();
+  async closeConversation({ topic }: { topic: string }): Promise<void> {
+    await ensureIndexes();
+    await conversations.updateMany(
+      { topic, closedAt: { $exists: false } },
+      { $set: { closedAt: Date.now() } },
+    );
+  }
 
-        for(const conversation of this.conversations.values()){
-            if(conversation.topic === topic && conversation.closedAt === undefined){
-                conversation.closedAt = closedAt;
-            }
-        }
-    }
+  async purgeClosed(): Promise<void> {
+    await ensureIndexes();
 
-    purgeClosed(input: Record<string, never>){
-        const cutoff = Date.now() - PURGE_AFTER;
+    const cutoff = Date.now() - PURGE_AFTER;
+    const expired = await conversations.find(
+      { closedAt: { $lte: cutoff } },
+      { projection: { id: 1 } },
+    ).toArray();
 
-        for(const [id, conversation] of this.conversations){
-            if(conversation.closedAt !== undefined && conversation.closedAt < cutoff){
-                for (const messageId of conversation.messages){
-                    this.messages.delete(messageId);
-                }
-                this.conversations.delete(id);
-            }
-        }
-    }
+    if (!expired.length) return;
 
-    _messages({conversation, reader}: {conversation: number; reader: string}): Array<{message: number; sender: string; content: string; sentAt: string; readStatus: ReadStatus}> {
-        const found = this.conversations.get(conversation);
-        if(found === undefined || !this.isMember(found, reader)){
-            return [];
-        }
-
-        return found.messages.flatMap((id) => {
-            const message = this.messages.get(id);
-            if (message === undefined){
-                return [];
-            }
-            return [{
-                message: message.message,
-                sender: message.sender,
-                content: message.content,
-                sentAt: new Date(message.sentAt).toISOString(),
-                readStatus: message.readStatus,
-            }];
-        });
-    }
-
-    _conversationsOf({user}: {user: string}): Array<{conversation: number; topic: string; initiator: string; recipient: string; closedAt?: string}> {
-        return [...this.conversations.values()].filter((conversation) => this.isMember(conversation, user)).map(({conversation, topic, initiator, recipient, closedAt}) => ({
-            conversation,
-            topic,
-            initiator,
-            recipient,
-            closedAt: closedAt === undefined ? undefined : new Date(closedAt).toISOString(),
-        }));
-    }
+    const ids = expired.map(({ id }) => id);
+    await messages.deleteMany({ conversation: { $in: ids } });
+    await conversations.deleteMany({ id: { $in: ids } });
+  }
 }

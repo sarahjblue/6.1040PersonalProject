@@ -54,7 +54,7 @@ post(name: String, description?: String, price?: String, seller: User, image: Im
 
 claim(item: Item, claimer: User) : returns ()
 
-    where item is not in ITEMS
+    where item is not in Items
 
     then
         refuses CLAIM_UNKNOWN_ITEM "There is no such item for sale."
