@@ -4,47 +4,79 @@
 allow users to describe items with predefined attributes so buyers can narrow their search
 
 ## Principle
-a user selects predefined tags to notify other users what the item is; allows users to ask for items with specific tags and see only items with those tags; users can only assign one tag per category
+a user selects predefined tags grouped by category, such as the sizes XS to XXL and a set of colors, to notify other users what the item is; allows users to ask for items with specific tags and see only items with those tags; users can only assign one tag per category
+
+## Types
+
+external Item
+    a thing that can be described with tags, owned by another concept.
 
 ## State
 ``` state
 A set of Tags with
-    a category String and
-    a label String (predefined options created at deployment)
+    a unique category String and
+    a label String
 
 A set of Items with
     a tags set of Tag
 ```
 
-
 ## Actions
 
-tag(item: Item, tag: Tag)
+```actions
+tag(item: Item, tag: Tag): returns ()
 
-    where tag is included in Tags
-
-    then
-        add item to Items if not present, add tag to item's tags
-
-
-untag(item: Item, tag: Tag)
-
-    where item is included in the collection and tag is included in item's tags
+    where tag is not in Tags
 
     then
-        remove tag from Item's tags
+        refuses TAG_NOT_EXIST "This tag does not exist."
 
-
-search(tags: set of Tags): (arrayOf(Item))
-
-    where each tag in tags is contained within the valid tags
+    where tag is in Tags and item already has a tag in the category of tag
 
     then
-        return a set of available Items that include all tags within their set of Tags
+        refuses TAG_CATEGORY_TAKEN "This item already has a tag in that category."
 
-clear(item: Item)
-
-    where item is a valid Item
+    where tag is included in Tags and item has no tag in the category of tag
 
     then
-        clear all of its tags and delete the item
+        add item to Items if not present
+        add tag to the tags of items
+        returns
+
+
+untag(item: Item, tag: Tag): returns ()
+
+    where item is included in the Items and tag is included in the tags of item
+
+    then
+        remove tag from the tags of item
+        returns
+
+
+clear(item: Item): returns ()
+
+    where item is not in Items
+
+    then
+        refuses CLEAR_UNKNOWN_ITEM "This item has no tags to clear."
+
+    where item is in Items
+
+    then
+        remove item from Items with all of its tags
+        returns
+```
+
+## Queries
+
+```queries
+_search(tags: Tags): many (item: Item)
+
+    tags is a collection of Tag identifiers
+    answers every item in Items whose tags include all of the given tags
+    answers no rows when any given tag is not in Tags
+
+_tags() : many (tag: Tag, category: String, label: String)
+
+    answers every predefined tag
+```
