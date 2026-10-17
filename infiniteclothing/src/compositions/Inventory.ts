@@ -35,7 +35,7 @@ const Post = endpoint(
         Inventory.post({ name, seller, image, description, price })
       )
       .then(respond({ item: "item" })),
-  { input: { required: ["name", "seller", "image"] } },
+  { input: { required: ["name", "seller", "image", "description", "price"] } },
 );
 
 const Claim = endpoint(
@@ -53,7 +53,7 @@ const Edit = endpoint(
     receive({ item, description, price, image, user })
       .then(Inventory.edit({item, user, description, price, image}))
       .then(respond({})),
-  { input: { required: ["item", "user"] } },
+  { input: { required: ["item", "user", "description", "price", "image"] } },
 );
 
 const Delete = endpoint(

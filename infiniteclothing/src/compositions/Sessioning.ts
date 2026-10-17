@@ -16,21 +16,21 @@ const SessionOpen = endpoint(
 
 const SessionUser = former(
   "user associated with a session",
-  ({ id }, { username, email }) =>
+  ({ id, user }, { username, email }) =>
     form({
       users: each(
-        Sessioning._getUser({ id }).is({ username, email }),
+        Sessioning._getUser({ id, user }).is({ username, email }),
       ).form({ username, email }),
     }),
 );
 
 const GetUser = endpoint(
   "/sessioning/user",
-  ({ id }) =>
-    receive({ id }).then(
-      respond({ result: SessionUser({ id }) }),
+  ({ id, user }) =>
+    receive({ id, user }).then(
+      respond({ result: SessionUser({ id, user }) }),
     ),
-  { input: { required: ["id"] } },
+  { input: { required: ["id", "user"] } },
 );
 
 export const composition = { SessionOpen, GetUser };

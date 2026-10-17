@@ -1,22 +1,28 @@
 import { endpoint, receive, respond } from "@mit-sdg/sync-engine/boundary";
 import { concepts } from "../concepts.ts";
-import { each, form, former } from "@mit-sdg/sync-engine/language";
+import { each, form, former, where } from "@mit-sdg/sync-engine/language";
 
 
 const { Tagging } = concepts;
 
+const TagList = former(
+  "predefined tags",
+  (_input, { tag, category, label }) =>
+    form({
+      tags: each(
+        Tagging._tags({}).is({ tag, category, label }),
+      ).form({ tag, category, label }),
+    }),
+);
+
 const Tags = endpoint("/tagging/tags", () =>
-  receive({}).then(respond({ tags: Tagging._tags({}) })),
+  receive({}).then(respond({ tags: TagList({}) })),
 );
 
 const SearchResults = former(
   "items matching selected tags",
   ({ selectedTags }, { item }) =>
-    form({
-      items: each(
-        Tagging._search(selectedTags).is({ item }),
-    ).form({ item }),
-    }),
+      each(Tagging._search({selectedTags}).is({item})).form({ item }),
 );
 
 const Search = endpoint(

@@ -94,7 +94,7 @@ export class TaggingConcept {
     await itemTags.deleteMany({ item });
   }
 
-  async _search(selectedTags: string[]): Promise<Array<{ item: string }>> {
+  async _search({selectedTags}: {selectedTags: string[]}) {
     await ensureIndexes();
     if (selectedTags.length === 0) return [];
 

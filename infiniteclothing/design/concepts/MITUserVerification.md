@@ -81,13 +81,13 @@ authenticate(username: String, password: String): returns (user: User)
     then
         refuses INCORRECT_PASSWORD "Incorrect password. Please try again."
 
-    where username is in Users, password matches, and the confirmed boolean is false
+    where username is in Users, password matches, and confirmed is CONFIRMED
 
     then
         refuses NOT_CONFIRMED "Your account is not confirmed. Please confirm."
 
 
-    where username is in Users, password matches the one associated with the username, and the confirmed boolean is set to true
+    where username is in Users, password matches the one associated with the username, and confirmed is CONFIRMED is set to true
 
     then
         returns user

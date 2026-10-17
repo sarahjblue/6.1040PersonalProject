@@ -74,9 +74,9 @@ clear(item: Item): returns ()
 ## Queries
 
 ```queries
-_search(tags: Tags): many (item: Item)
+_search(selectedTags: Tags): many (item: Item)
 
-    tags is a collection of Tag identifiers
+    selectedTags is a collection of Tag identifiers
     answers every item in Items whose tags include all of the given tags
     answers no rows when any given tag is not in Tags
 

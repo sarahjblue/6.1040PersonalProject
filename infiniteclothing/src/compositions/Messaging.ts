@@ -41,10 +41,10 @@ const StartConversation = endpoint(
 
 const SendMessage = endpoint(
   "/messaging/sendMessage",
-  ({ conversation, sender, content }) =>
+  ({ conversation, sender, content, message }) =>
     receive({ conversation, sender, content })
-      .then(Messaging.sendMessage({ conversation, sender, content }).responds({ }))
-      .then(respond({ Messages })),
+      .then(Messaging.sendMessage({ conversation, sender, content }).responds({ message }))
+      .then(respond({ message })),
   { input: { required: ["conversation", "sender", "content"] } },
 );
 
@@ -82,13 +82,13 @@ const Messages = endpoint(
   { input: { required: ["conversation", "reader"] } },
 );
 
-// const Conversations = endpoint(
-//   "/messaging/conversations",
-//   ({ user }) =>
-//     receive({ user })
-//       .then(respond({ conversations: Messaging._conversationsOf({ user }) })),
-//   { input: { required: ["user"] } },
-// );
+const Conversations = endpoint(
+  "/messaging/conversations",
+  ({ user }) =>
+    receive({ user })
+      .then(respond({ conversations: Messaging._conversationsOf({ user }) })),
+  { input: { required: ["user"] } },
+);
 
 const CloseConversation = endpoint(
   "/messaging/closeConversation",
