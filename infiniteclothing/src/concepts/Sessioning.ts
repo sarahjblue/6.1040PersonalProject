@@ -50,11 +50,16 @@ export class SessioningConcept {
     };
   }
 
-  async _getUser(session: Session): Promise<User | undefined> {
-    await ensureIndexes();
+  async _getUser({ session }: { session: Session }): Promise<{ user: User }> {
+  await ensureIndexes();
 
-    const stored = await sessions.findOne({ sessionId: session.id });
-    if (!stored) return undefined;
-    return { username: stored.username, email: session.user.email };
+  const stored = await sessions.findOne({ sessionId: session.id });
+  if (!stored) {
+    throw new Error("Unknown session.");
   }
+
+  return {
+    user: { username: stored.username, email: stored.email },
+  };
+}
 }

@@ -106,7 +106,7 @@ export class MessagingConcept {
     return { message: id };
   }
 
-  async markRead({ conversation, reader }: { conversation: number; reader: string }): Promise<void> {
+  async markRead({ conversation, reader }: { conversation: number; reader: string }): Promise<{}> {
     await ensureIndexes();
 
     const thread = await conversations.findOne({ id: conversation });
@@ -122,50 +122,87 @@ export class MessagingConcept {
       { conversation, sender: { $ne: reader }, readStatus: "UNREAD" },
       { $set: { readStatus: "READ" } },
     );
+
+    return {};
   }
 
   async _messages({
-    conversation,
-    reader,
-  }: {
-    conversation: number;
-    reader: string;
-  }): Promise<Array<MessageDocument & { sender: string }>> {
-    await ensureIndexes();
+  conversation,
+  reader,
+}: {
+  conversation: number;
+  reader: string;
+}): Promise<Array<{
+  message: number;
+  sender: string;
+  content: string;
+  sentAt: number;
+  readStatus: ReadStatus;
+}>> {
+  await ensureIndexes();
 
-    const thread = await conversations.findOne({ id: conversation });
-    if (!thread){
-        throw new UnknownConversation("This conversation does not exist.");
-    }
-
-    if(!isMember(thread, reader)) {
-        throw new NotConversationMember("You are not a member of this conversation.");
-    }
-
-    return messages.find(
-      { conversation },
-      { projection: { _id: 0 } },
-    ).sort({ sentAt: 1 }).toArray();
+  const thread = await conversations.findOne({ id: conversation });
+  if (!thread) {
+    throw new UnknownConversation("This conversation does not exist.");
   }
 
-  async _conversationsOf({ user }: { user: string }): Promise<ConversationDocument[]> {
-    await ensureIndexes();
+  if (!isMember(thread, reader)) {
+    throw new NotConversationMember("You are not a member of this conversation.");
+  }
 
-    return conversations.find(
+  const rows = await messages
+    .find({ conversation }, { projection: { _id: 0 } })
+    .sort({ sentAt: 1 })
+    .toArray();
+
+  return rows.map(({ id, sender, content, sentAt, readStatus }) => ({
+    message: id,
+    sender,
+    content,
+    sentAt,
+    readStatus,
+  }));
+}
+
+  async _conversationsOf({
+  user,
+}: {
+  user: string;
+}): Promise<Array<{
+  conversation: number;
+  topic: string;
+  initiator: string;
+  recipient: string;
+  closedAt?: number;
+}>> {
+  await ensureIndexes();
+
+  const rows = await conversations
+    .find(
       { $or: [{ initiator: user }, { recipient: user }] },
       { projection: { _id: 0 } },
-    ).toArray();
-  }
+    )
+    .toArray();
 
-  async closeConversation({ topic }: { topic: string }): Promise<void> {
+  return rows.map(({ id, topic, initiator, recipient, closedAt }) => ({
+    conversation: id,
+    topic,
+    initiator,
+    recipient,
+    closedAt,
+  }));
+}
+
+  async closeConversation({ topic }: { topic: string }): Promise<{}> {
     await ensureIndexes();
     await conversations.updateMany(
       { topic, closedAt: { $exists: false } },
       { $set: { closedAt: Date.now() } },
     );
+    return {};
   }
 
-  async purgeClosed(): Promise<void> {
+  async purgeClosed(): Promise<{}> {
     await ensureIndexes();
 
     const cutoff = Date.now() - PURGE_AFTER;
@@ -174,10 +211,12 @@ export class MessagingConcept {
       { projection: { id: 1 } },
     ).toArray();
 
-    if (!expired.length) return;
+    if (!expired.length) return {};
 
     const ids = expired.map(({ id }) => id);
     await messages.deleteMany({ conversation: { $in: ids } });
     await conversations.deleteMany({ id: { $in: ids } });
+
+    return {};
   }
 }

@@ -33,7 +33,7 @@ const items = db.collection<Item>("inventory");
 
 export class InventoryConcept{
 
-    async post({name, seller, image, description, price}: {name: string, seller: string, image: string, description?: string, price?: string}): Promise<Item> {
+    async post({name, seller, image, description, price}: {name: string, seller: string, image: string, description?: string, price?: string}): Promise<{item: Item}> {
 
         const id = await nextId("inventory");
 
@@ -48,10 +48,10 @@ export class InventoryConcept{
         };
 
         await items.insertOne(item);
-        return item;
+        return {item};
     }
 
-    async claim({item, claimer}:{item: Item, claimer: string}): Promise<void>{
+    async claim({item, claimer}:{item: Item, claimer: string}): Promise<{}>{
         const found = await items.findOne({id: item.id});
 
         if(!found){
@@ -70,9 +70,11 @@ export class InventoryConcept{
         if (!result.modifiedCount){
             throw new ItemNotAvailableToClaim("This item can not be claimed at this time.");
         }
+
+        return {};
     }
 
-    async edit({item, user, description, price, image}: {item: Item, user: string, description?: string, price?: string, image?: string}): Promise<void> {
+    async edit({item, user, description, price, image}: {item: Item, user: string, description?: string, price?: string, image?: string}): Promise<{}> {
         const found = await items.findOne({id: item.id});
 
         if(!found){
@@ -98,9 +100,10 @@ export class InventoryConcept{
         }
 
         await items.updateOne({ id: item.id }, { $set: changes });
+        return {};
     }
 
-    async delete({item, user}: {item: Item, user: string}): Promise<void> {
+    async delete({item, user}: {item: Item, user: string}): Promise<{}> {
         const found = await items.findOne({id: item.id});
 
         if (!found){
@@ -116,29 +119,56 @@ export class InventoryConcept{
         }
 
         await items.deleteOne({id: item.id});
+        return {};
     }
 
-    async releaseClaim({item, user}: {item: Item, user: string}): Promise<void> {
+    async releaseClaim({item, user}: {item: Item, user: string}): Promise<{}> {
         const result = await items.updateOne({id: item.id, status: "CLAIMED", buyer: user}, {$set: {status: "AVAILABLE"}, $unset: {buyer: ""}},);
 
         if(!result.modifiedCount){
             throw new ReleaseNotBuyer("You can not release this claim.");
         }
+
+        return {};
     }
 
-    async transactionCompleted({item}: {item: Item}): Promise<void> {
+    async transactionCompleted({item}: {item: Item}): Promise<{}> {
         const result = await items.updateOne({id: item.id, status: "CLAIMED"}, {$set: {status: "COMPLETED"}});
 
         if(!result.modifiedCount){
             throw new CompleteUnknownItem("This item does not exist or is not in a claimable state.");
         }
+
+        return {};
     }
 
-    async _getSeller(item: Item): Promise<string | undefined> {
-        return (await items.findOne({id: item.id}))?.seller;
+   async _getSeller({ item }: { item: Item }): Promise<{ seller: string }> {
+    const seller = (await items.findOne({ id: item.id }))?.seller;
+
+    if (seller === undefined) {
+        throw new Error("No seller found for item.");
     }
 
-    async _available() : Promise<Item[]> {
-        return (await items.find({status: "AVAILABLE"})).toArray();
-    }
+    return { seller };
+}
+
+    async _available(): Promise<Array<{
+  item: Item;
+  name: string;
+  description?: string;
+  price?: string;
+  seller: string;
+  image: string;
+}>> {
+  const rows = await items.find({ status: "AVAILABLE" }).toArray();
+
+  return rows.map((item) => ({
+    item,
+    name: item.name,
+    description: item.description,
+    price: item.price,
+    seller: item.seller,
+    image: item.image,
+  }));
+}
 }

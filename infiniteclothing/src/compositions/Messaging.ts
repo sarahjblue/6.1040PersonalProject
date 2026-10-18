@@ -6,16 +6,17 @@ const { Messaging } = concepts;
 
 const ConversationList = former(
   "conversations for a user",
-  ({ user }, { id, topic, initiator, recipient }) =>
+  ({ user }, { conversation, topic, initiator, recipient, closedAt }) =>
     form({
       conversations: each(
         Messaging._conversationsOf({ user }).is({
-          id,
+          conversation,
           topic,
           initiator,
           recipient,
+          closedAt,
         }),
-      ).form({ id, topic, initiator, recipient }),
+      ).form({ conversation, topic, initiator, recipient, closedAt }),
     }),
 );
 
@@ -59,17 +60,17 @@ const MarkRead = endpoint(
 
 const MessageList = former(
   "messages in a conversation",
-  ({ conversation, reader }, { id, sender, content, sentAt, readStatus }) =>
+  ({ conversation, reader }, { message, sender, content, sentAt, readStatus }) =>
     form({
       messages: each(
         Messaging._messages({ conversation, reader }).is({
-          id,
+          message,
           sender,
           content,
           sentAt,
           readStatus,
         }),
-      ).form({ id, sender, content, sentAt, readStatus }),
+      ).form({ message, sender, content, sentAt, readStatus }),
     }),
 );
 
@@ -80,14 +81,6 @@ const Messages = endpoint(
       respond({ result: MessageList({ conversation, reader }) }),
     ),
   { input: { required: ["conversation", "reader"] } },
-);
-
-const Conversations = endpoint(
-  "/messaging/conversations",
-  ({ user }) =>
-    receive({ user })
-      .then(respond({ conversations: Messaging._conversationsOf({ user }) })),
-  { input: { required: ["user"] } },
 );
 
 const CloseConversation = endpoint(

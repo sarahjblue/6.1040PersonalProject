@@ -6,20 +6,18 @@ const { Inventory } = concepts;
 
 const AvailableInventory = former(
   "available inventory",
-  (_input, { id, name, description, price, image, seller, status, buyer }) =>
+  (_input, { item, name, description, price, image, seller }) =>
     form({
       items: each(
         Inventory._available({}).is({
-          id,
+          item,
           name,
           description,
           price,
           image,
           seller,
-          status,
-          buyer,
         }),
-      ).form({ id, name, description, price, image, seller, status, buyer }),
+      ).form({ item, name, description, price, image, seller}),
     }),
 );
 

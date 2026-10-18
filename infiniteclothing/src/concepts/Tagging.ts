@@ -49,7 +49,7 @@ function ensureIndexes(): Promise<void> {
 }
 
 export class TaggingConcept {
-  async tag({item, tag}: {item: string, tag: string}): Promise<void> {
+  async tag({item, tag}: {item: string, tag: string}): Promise<{}> {
     await ensureIndexes();
 
     const definition = await tags.findOne({ _id: tag });
@@ -57,7 +57,7 @@ export class TaggingConcept {
 
     const existing = await itemTags.findOne({ item, category: definition.category });
     if (existing) {
-      if (existing.label === definition.label) return;
+      if (existing.label === definition.label) return {};
       throw new TagCategoryTaken("TAG_CATEGORY_TAKEN: This item already has a tag in that category.");
     }
 
@@ -74,24 +74,29 @@ export class TaggingConcept {
       }
       throw error;
     }
+
+    return {};
   }
 
-  async untag({item, tag}: {item: string, tag: string}): Promise<void> {
+  async untag({item, tag}: {item: string, tag: string}): Promise<{}> {
     await ensureIndexes();
 
     const definition = await tags.findOne({ _id: tag });
-    if (!definition) return;
+    if (!definition) return {};
 
     await itemTags.deleteOne({
       item,
       category: definition.category,
       label: definition.label,
     });
+
+    return {};
   }
 
-  async clear({item}: {item: string}): Promise<void> {
+  async clear({item}: {item: string}): Promise<{}> {
     await ensureIndexes();
     await itemTags.deleteMany({ item });
+    return {};
   }
 
   async _search({selectedTags}: {selectedTags: string[]}) {
