@@ -1,13 +1,13 @@
 # Sessioning
 
-A User [opens or retrieves their session](reaction: Sessioning.sessionOpen)
+A User [opens or retrieves their session](reaction: SessionOpen)
 
 ```endpoints
-Sessioning.sessionOpen at /sessioning/sessionOpen
+SessionOpen at /sessioning/sessionOpen
 ```
 
-The application can [get the user associated with a session](reaction: Sessioning._getUser)
+The application can [get the user associated with a session](reaction: GetUser)
 
 ```endpoints
-Sessioning._getUser at /sessioning/user
+GetUser at /sessioning/user
 ```

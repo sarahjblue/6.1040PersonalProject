@@ -1,31 +1,31 @@
 # Tagging
 
-A User can [list the predefined tags](reaction: Tagging._tags)
+A User can [list the predefined tags](reaction: Tags)
 
 ```endpoints
-Tagging._tags at /tagging/tags
+Tags at /tagging/tags
 ```
 
-A User can [search items by tags](reaction: Tagging._search)
+A User can [search items by tags](reaction: Search)
 
 ```endpoints
-Tagging._search at /tagging/search
+Search at /tagging/search
 ```
 
-A User [adds a tag to an item](reaction: Tagging.tag)
+A User [adds a tag to an item](reaction: Tag)
 
 ```endpoints
-Tagging.tag at /tagging/tag
+Tag at /tagging/tag
 ```
 
-A User [removes a tag from an item](reaction: Tagging.untag)
+A User [removes a tag from an item](reaction: Untag)
 
 ```endpoints
-Tagging.untag at /tagging/untag
+Untag at /tagging/untag
 ```
 
-A User [clears an item's tags](reaction: Tagging.clear)
+A User [clears an item's tags](reaction: Clear)
 
 ```endpoints
-Tagging.clear at /tagging/clear
+Clear at /tagging/clear
 ```

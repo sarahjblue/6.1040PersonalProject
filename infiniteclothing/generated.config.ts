@@ -7,11 +7,6 @@ export default {
     version: 1,
     documents: [
       new URL("./design/types.md", import.meta.url),
-      new URL("./design/concepts/Inventory.md", import.meta.url),
-      new URL("./design/concepts/Messaging.md", import.meta.url),
-      new URL("./design/concepts/MITUserVerification.md", import.meta.url),
-      new URL("./design/concepts/Sessioning.md", import.meta.url),
-      new URL("./design/concepts/Tagging.md", import.meta.url),
       new URL("./design/compositions/Inventory.md", import.meta.url),
       new URL("./design/compositions/Messaging.md", import.meta.url),
       new URL("./design/compositions/MITUserVerification.md", import.meta.url),

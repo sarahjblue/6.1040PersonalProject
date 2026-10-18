@@ -1,43 +1,43 @@
 # Inventory
 
-A User can [list the inventory](reaction: Inventory._available)
+A User can [list the inventory](reaction: Available)
 
 ```endpoints
-Inventory._available at /inventory/available
+Available at /inventory/available
 ```
 
-A User [posts an item](reaction: Inventory.post)
+A User [posts an item](reaction: Post)
 
 ```endpoints
-Inventory.post at /inventory/post
+Post at /inventory/post
 ```
 
-A User [claims an item](reaction: Inventory.claim)
+A User [claims an item](reaction: Claim)
 
 ```endpoints
-Inventory.claim at /inventory/claim
+Claim at /inventory/claim
 ```
 
-A User [edits an item](reaction: Inventory.edit)
+A User [edits an item](reaction: Edit)
 
 ```endpoints
-Inventory.edit at /inventory/edit
+Edit at /inventory/edit
 ```
 
-A User [deletes an item](reaction: Inventory.delete)
+A User [deletes an item](reaction: Delete)
 
 ```endpoints
-Inventory.delete at /inventory/delete
+Delete at /inventory/delete
 ```
 
-A User [releases a claim](reaction: Inventory.releaseClaim)
+A User [releases a claim](reaction: ReleaseClaim)
 
 ```endpoints
-Inventory.releaseClaim at /inventory/releaseClaim
+ReleaseClaim at /inventory/releaseClaim
 ```
 
-A User [completes transaction](reaction: Inventory.transactionCompleted)
+A User [completes transaction](reaction: TransactionCompleted)
 
 ```endpoints
-Inventory.transactionCompleted at /inventory/transactionCompleted
+TransactionCompleted at /inventory/transactionCompleted
 ```

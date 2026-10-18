@@ -1,43 +1,43 @@
 # Messaging
 
-A User [starts a conversation](reaction: Messaging.startConversation)
+A User [starts a conversation](reaction: StartConversation)
 
 ```endpoints
-Messaging.startConversation at /messaging/startConversation
+StartConversation at /messaging/startConversation
 ```
 
-A User [sends a message](reaction: Messaging.sendMessage)
+A User [sends a message](reaction: SendMessage)
 
 ```endpoints
-Messaging.sendMessage at /messaging/sendMessage
+SendMessage at /messaging/sendMessage
 ```
 
-A User [marks conversation messages as read](reaction: Messaging.markRead)
+A User [marks conversation messages as read](reaction: MarkRead)
 
 ```endpoints
-Messaging.markRead at /messaging/markRead
+MarkRead at /messaging/markRead
 ```
 
-A User can [view messages in a conversation](reaction: Messaging._messages)
+A User can [view messages in a conversation](reaction: Messages)
 
 ```endpoints
-Messaging._messages at /messaging/messages
+Messages at /messaging/messages
 ```
 
-A User can [list their conversations](reaction: Messaging._conversationsOf)
+A User can [list their conversations](reaction: Conversation)
 
 ```endpoints
-Messaging._conversationsOf at /messaging/conversations
+Conversation at /messaging/conversations
 ```
 
-The application [closes conversations about an item](reaction: Messaging.closeConversation)
+The application [closes conversations about an item](reaction: CloseConversation)
 
 ```endpoints
-Messaging.closeConversation at /messaging/closeConversation
+CloseConversation at /messaging/closeConversation
 ```
 
-A scheduled maintenance task [purges expired conversations](reaction: Messaging.purgeClosed)
+A scheduled maintenance task [purges expired conversations](reaction: PurgeClosed)
 
 ```endpoints
-Messaging.purgeClosed at /messaging/purgeClosed
+PurgeClosed at /messaging/purgeClosed
 ```

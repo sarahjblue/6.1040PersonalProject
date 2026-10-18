@@ -1,19 +1,19 @@
 # MITUserVerification
 
-A person [registers an account](reaction: MITUserVerification.register)
+A person [registers an account](reaction: Register)
 
 ```endpoints
-MITUserVerification.register at /users/register
+Register at /users/register
 ```
 
-A person [confirms their account](reaction: MITUserVerification.confirm)
+A person [confirms their account](reaction: Confirm)
 
 ```endpoints
-MITUserVerification.confirm at /users/confirm
+Confirm at /users/confirm
 ```
 
-A person [authenticates](reaction: MITUserVerification.authenticate)
+A person [authenticates](reaction: Authenticate)
 
 ```endpoints
-MITUserVerification.authenticate at /users/authenticate
+Authenticate at /users/authenticate
 ```
