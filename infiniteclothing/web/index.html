@@ -1,2 +1,60 @@
 <!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Infinite Clothing</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./app.ts"></script>
+  </head>
+  <body>
+    <main class="page">
+      <section class="panel">
+        <h1>Post an item</h1>
+
+        <form id="item-form" class="item-form">
+          <label>
+            Seller
+            <input name="seller" type="text" placeholder="username" required />
+          </label>
+
+          <label>
+            Item name
+            <input name="name" type="text" placeholder="Used desk lamp" required />
+          </label>
+
+          <label>
+            Description
+            <textarea name="description" rows="3" placeholder="Describe the item"></textarea>
+          </label>
+
+          <label>
+            Price
+            <input name="price" type="text" placeholder="$25" required />
+          </label>
+
+          <label>
+            Image URL
+            <input name="image" type="url" placeholder="https://..." required />
+          </label>
+
+          <div class="tags">
+            <span>Tags</span>
+            <label><input type="checkbox" name="tags" value="size" /> size</label>
+            <label><input type="checkbox" name="tags" value="color" /> color</label>
+            <label><input type="checkbox" name="tags" value="item" /> item</label>
+          </div>
+
+          <button type="submit">POST</button>
+        </form>
+
+        <p id="status" class="status" aria-live="polite"></p>
+      </section>
+
+      <section class="panel">
+        <h2>Marketplace</h2>
+        <div id="inventory" class="inventory"></div>
+      </section>
+    </main>
+  </body>
+</html>
