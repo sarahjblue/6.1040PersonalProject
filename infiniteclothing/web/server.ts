@@ -1,18 +1,40 @@
 import homepage from "./index.html";
 
-const backend = process.env.BACKEND_URL ?? "http://127.0.0.1:3000";
+const backend = new URL(
+  process.env.BACKEND_URL ?? "http://127.0.0.1:8080",
+);
+const frontendPort = Number(process.env.PORT ?? 3001);
 
-// Pass API requests and health checks on to the backend.
-function proxy(request: Request) {
-  const url = new URL(request.url);
-  return fetch(new URL(url.pathname + url.search, backend), request).catch(
-    () => Response.json({ error: "UNAVAILABLE" }, { status: 503 }),
-  );
+async function proxy(request: Request) {
+  const incoming = new URL(request.url);
+  const path = incoming.pathname.replace(/^\/api(?=\/)/, "");
+  const target = new URL(`${path}${incoming.search}`, backend);
+
+  try {
+    const headers = new Headers(request.headers);
+    headers.delete("host");
+    headers.delete("content-length");
+    headers.delete("connection");
+
+    const body =
+      request.method === "GET" || request.method === "HEAD"
+        ? undefined
+        : await request.arrayBuffer();
+
+    return await fetch(target, {
+      method: request.method,
+      headers,
+      body,
+    });
+  } catch (error) {
+    console.error(`Proxy request failed: ${target}`, error);
+    return Response.json({ error: "UNAVAILABLE" }, { status: 503 });
+  }
 }
 
 const server = Bun.serve({
   hostname: process.env.HOST ?? "127.0.0.1",
-  port: Number(process.env.PORT ?? 8080),
+  port: frontendPort,
   routes: {
     "/": homepage,
     "/api/*": proxy,
@@ -21,3 +43,4 @@ const server = Bun.serve({
 });
 
 console.log(`Frontend listening on ${server.url}`);
+console.log(`Proxying API requests to ${backend.origin}`);
