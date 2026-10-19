@@ -129,10 +129,53 @@ button {
   font-weight: 700;
 }
 
-.messaging {
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 3px solid var(--border);
+.messages-launcher {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 20;
+  border-radius: 999px;
+  padding: 0.8rem 1.25rem;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 25%);
+}
+
+.messaging-panel {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 5.5rem;
+  z-index: 19;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 0.75rem;
+  width: min(620px, calc(100vw - 2rem));
+  max-height: min(720px, calc(100vh - 7rem));
+  overflow: hidden;
+  padding: 1rem;
+  border: 3px solid var(--border);
+  background: var(--panel);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 30%);
+}
+
+.messaging-panel[hidden] {
+  display: none;
+}
+
+.messaging-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.messaging-header h2 {
+  margin: 0;
+}
+
+.messages-close {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.65rem;
+  font-size: 1.4rem;
+  line-height: 1;
 }
 
 .message-compose {
@@ -148,8 +191,10 @@ button {
 
 .message-layout {
   display: grid;
-  grid-template-columns: minmax(140px, 0.7fr) minmax(240px, 1.3fr);
+  grid-template-columns: minmax(120px, 0.7fr) minmax(0, 1.3fr);
   gap: 1rem;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .conversation-list,
@@ -159,6 +204,19 @@ button {
   gap: 0.5rem;
   max-height: 360px;
   overflow-y: auto;
+}
+
+.message-layout > div,
+.message-thread {
+  min-width: 0;
+  min-height: 0;
+}
+
+.message-thread {
+  display: grid;
+  grid-template-rows: auto minmax(100px, 1fr) auto;
+  gap: 0.5rem;
+  overflow: hidden;
 }
 
 .conversation-list button {
@@ -250,13 +308,35 @@ button {
 
   .message-layout {
     grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .messaging-panel {
+    right: 0.5rem;
+    bottom: 5rem;
+    width: calc(100vw - 1rem);
+    max-height: calc(100vh - 6rem);
+    padding: 0.75rem;
   }
 }
 
 .card-actions {
   display: flex;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.4rem;
   margin-top: 0.75rem;
+}
+
+.card-actions button {
+  flex: 1 1 5.5rem;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .card-actions button:disabled {

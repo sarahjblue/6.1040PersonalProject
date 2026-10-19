@@ -64,6 +64,12 @@ const replyContentInput =
   document.querySelector<HTMLTextAreaElement>("#reply-content");
 const sendMessageButton =
   document.querySelector<HTMLButtonElement>("#send-message-button");
+const messagesLauncher =
+  document.querySelector<HTMLButtonElement>("#messages-launcher");
+const messagesPanel =
+  document.querySelector<HTMLElement>("#messages-panel");
+const closeMessagesButton =
+  document.querySelector<HTMLButtonElement>("#close-messages");
 
 if (
   !form ||
@@ -85,7 +91,10 @@ if (
   !messageList ||
   !sendMessageForm ||
   !replyContentInput ||
-  !sendMessageButton
+  !sendMessageButton ||
+  !messagesLauncher ||
+  !messagesPanel ||
+  !closeMessagesButton
 ) {
   throw new Error("Missing frontend elements. Check the IDs in index.html.");
 }
@@ -95,6 +104,18 @@ let tagDefinitions: TagDefinition[] = [];
 let visibleItemIds: Set<number> | undefined;
 let conversations: Conversation[] = [];
 let selectedConversation: Conversation | undefined;
+
+function setMessagesOpen(open: boolean) {
+  if (!messagesPanel || !messagesLauncher || !messageRecipientInput) return;
+
+  messagesPanel.hidden = !open;
+  messagesLauncher.setAttribute("aria-expanded", String(open));
+  if (open) {
+    messageRecipientInput.focus();
+  } else {
+    messagesLauncher.focus();
+  }
+}
 
 function getRows(data: unknown): unknown[] | undefined {
   if (!data || typeof data !== "object") return undefined;
@@ -334,8 +355,8 @@ function renderInventory() {
       messageTopicInput.value =
         item.id === undefined ? "" : String(item.id);
       messageTopicInput.readOnly = item.id !== undefined;
+      setMessagesOpen(true);
       initialMessageInput.focus();
-      startConversationForm.scrollIntoView({ behavior: "smooth", block: "center" });
     });
 
     const releaseButton = document.createElement("button");
@@ -625,6 +646,7 @@ async function loadMessages(conversation: Conversation, markRead: boolean) {
 }
 
 async function openConversation(conversation: Conversation) {
+  setMessagesOpen(true);
   await loadMessages(conversation, true);
 }
 
@@ -1209,6 +1231,16 @@ sendMessageForm.addEventListener("submit", async (event) => {
       error instanceof Error ? error.message : "Could not send the message.";
   } finally {
     sendMessageButton.disabled = conversation.closedAt !== undefined;
+  }
+});
+
+messagesLauncher.addEventListener("click", () => {
+  setMessagesOpen(messagesPanel.hidden === true);
+});
+closeMessagesButton.addEventListener("click", () => setMessagesOpen(false));
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !messagesPanel.hidden) {
+    setMessagesOpen(false);
   }
 });
 
