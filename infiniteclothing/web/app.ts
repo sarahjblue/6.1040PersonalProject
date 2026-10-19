@@ -93,8 +93,23 @@ function renderInventory() {
     claimButton.type = "button";
     claimButton.textContent = "Claim item";
     claimButton.disabled =
-      item.id === undefined || !currentUser || item.seller === currentUser;
+      item.id === undefined ||
+      !currentUser ||
+      item.seller === currentUser ||
+      item.status !== "AVAILABLE";
+    const isClaimedByCurrentUser =
+      item.status === "CLAIMED" && item.buyer === currentUser;
+    claimButton.hidden = isClaimedByCurrentUser;
     claimButton.addEventListener("click", () => void claimItem(item, claimButton));
+
+    const releaseButton = document.createElement("button");
+    releaseButton.type = "button";
+    releaseButton.textContent = "Release claim";
+    releaseButton.hidden = !isClaimedByCurrentUser;
+    releaseButton.disabled = !isClaimedByCurrentUser || item.id === undefined;
+    releaseButton.addEventListener("click", () =>
+      void releaseClaim(item, releaseButton),
+    );
 
     const editButton = document.createElement("button");
     editButton.type = "button";
@@ -108,7 +123,7 @@ function renderInventory() {
     deleteButton.disabled = !currentUser || item.seller !== currentUser;
     deleteButton.addEventListener("click", () => void deleteItem(item, deleteButton));
 
-    actions.append(claimButton, editButton, deleteButton);
+    actions.append(claimButton, releaseButton, editButton, deleteButton);
     card.append(image, title, details, description, actions);
     inventoryContainer.appendChild(card);
   }
@@ -127,9 +142,7 @@ async function readError(response: Response): Promise<string> {
 }
 
 async function fetchInventory() {
-    if(statusMessage === null){
-        return {};
-    }
+  if (!statusMessage || !currentUserInput) return;
   try {
     const response = await fetch("/api/inventory/available", {
       method: "POST",
@@ -139,9 +152,30 @@ async function fetchInventory() {
 
     if (!response.ok) throw new Error(await readError(response));
 
-    const loadedItems = extractItems(await response.json());
-    if (!loadedItems) throw new Error("Unexpected inventory response.");
+    const availableItems = extractItems(await response.json());
+    if (!availableItems) throw new Error("Unexpected inventory response.");
 
+    const user = currentUserInput.value.trim();
+    let claimedItems: Item[] = [];
+    if (user) {
+      const claimedResponse = await fetch("/api/inventory/claimed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user }),
+      });
+
+      if (!claimedResponse.ok) {
+        throw new Error(await readError(claimedResponse));
+      }
+
+      const loadedClaimedItems = extractItems(await claimedResponse.json());
+      if (!loadedClaimedItems) {
+        throw new Error("Unexpected claimed-items response.");
+      }
+      claimedItems = loadedClaimedItems;
+    }
+
+    const loadedItems = [...availableItems, ...claimedItems];
     items.splice(0, items.length, ...loadedItems);
     statusMessage.textContent = "";
   } catch (error) {
@@ -193,6 +227,55 @@ async function claimItem(item: Item, button: HTMLButtonElement) {
   } catch (error) {
     statusMessage.textContent =
       error instanceof Error ? error.message : "Could not claim item.";
+    button.disabled = false;
+  }
+}
+
+async function releaseClaim(item: Item, button: HTMLButtonElement) {
+  if (!currentUserInput || !statusMessage) return;
+
+  const user = currentUserInput.value.trim();
+  if (!user) {
+    statusMessage.textContent = "Enter your username before releasing a claim.";
+    currentUserInput.focus();
+    return;
+  }
+
+  if (item.id === undefined) {
+    statusMessage.textContent = "This item has no ID and cannot be released.";
+    return;
+  }
+
+  if (item.buyer !== user || item.status !== "CLAIMED") {
+    statusMessage.textContent = "Only the buyer can release this claim.";
+    return;
+  }
+
+  if (
+    !window.confirm(
+      `Release your claim on "${item.name}"? It will become available to other buyers.`,
+    )
+  ) {
+    return;
+  }
+
+  button.disabled = true;
+  statusMessage.textContent = "Releasing claim…";
+
+  try {
+    const response = await fetch("/api/inventory/releaseClaim", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item, user }),
+    });
+
+    if (!response.ok) throw new Error(await readError(response));
+
+    statusMessage.textContent = "Claim released successfully.";
+    void fetchInventory();
+  } catch (error) {
+    statusMessage.textContent =
+      error instanceof Error ? error.message : "Could not release claim.";
     button.disabled = false;
   }
 }
@@ -313,4 +396,5 @@ form.addEventListener("submit", async (event) => {
 });
 
 currentUserInput.addEventListener("input", renderInventory);
+currentUserInput.addEventListener("change", () => void fetchInventory());
 void fetchInventory();

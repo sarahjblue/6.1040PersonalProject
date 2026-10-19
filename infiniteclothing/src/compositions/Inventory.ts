@@ -25,6 +25,30 @@ const Available = endpoint("/inventory/available", () =>
   receive({}).then(respond({ inventory: AvailableInventory({}) })),
 );
 
+const ClaimedInventory = former(
+  "claimed inventory",
+  ({ user }, { item, name, description, price, image, seller }) =>
+    form({
+      items: each(
+        Inventory._claimedByUser({ user }).is({
+          item,
+          name,
+          description,
+          price,
+          image,
+          seller,
+        }),
+      ).form({ item, name, description, price, image, seller }),
+    }),
+);
+
+const Claimed = endpoint(
+  "/inventory/claimed",
+  ({ user }) =>
+    receive({ user }).then(respond({ inventory: ClaimedInventory({ user }) })),
+  { input: { required: ["user"] } },
+);
+
 const Post = endpoint(
   "/inventory/post",
   ({ name, description, price, seller, image }) =>
@@ -83,6 +107,7 @@ const TransactionCompleted = endpoint(
 
 export const composition = {
   Available,
+  Claimed,
   Post,
   Claim,
   Edit,

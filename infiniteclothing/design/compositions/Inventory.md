@@ -18,6 +18,12 @@ A User [claims an item](reaction:Claim)
 Claim at /inventory/claim
 ```
 
+A User [lists items they have claimed](reaction:Claimed)
+
+```endpoints
+Claimed at /inventory/claimed
+```
+
 A User [edits an item](reaction:Edit)
 
 ```endpoints

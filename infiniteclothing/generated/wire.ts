@@ -35,6 +35,24 @@ export type ApplicationWire = {
     output: Record<string, never>;
     error: { error: AppWideError | "CLAIM_UNKNOWN_ITEM" | "INVALID_INPUT" | "ITEM_NOT_AVAILABLE_TO_CLAIM" | "SELLER_CANNOT_CLAIM" };
   };
+  "/inventory/claimed": {
+    input: {
+      "user": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedByUser"]>[0], ["user"]>>;
+    };
+    output: {
+      "inventory": {
+        "items": {
+          "description": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedByUser"]>>>, ["description"]>>;
+          "image": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedByUser"]>>>, ["image"]>>;
+          "item": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedByUser"]>>>, ["item"]>>;
+          "name": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedByUser"]>>>, ["name"]>>;
+          "price": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedByUser"]>>>, ["price"]>>;
+          "seller": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedByUser"]>>>, ["seller"]>>;
+        }[];
+      };
+    };
+    error: { error: AppWideError | "INVALID_INPUT" };
+  };
   "/inventory/delete": {
     input: {
       "item": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Inventory"]["delete"]>[0], ["item"]>>;

@@ -40,6 +40,7 @@ Defined in [Inventory](../design/concepts/Inventory.md), line 1.
 
 - `_getSeller(item: Item) : optional (seller: User)`
 - `_available() : many (item: Item, name: String, description?: String, price?: String, seller: User, image: Image)`
+- `_claimedByUser(user: User) : many (item: Item, name: String, description?: String, price?: String, seller: User, image: Image)`
 
 #### Instances
 
@@ -155,6 +156,21 @@ _the authored explanation; this section records the generated shape._
 Former "available inventory" — inputs (); bindings (item, name, description, price, image, seller); promises exactly one record — forms:
   a record of
     items: each Inventory._available () has (description, image, item, name, price, seller)
+      form a record of
+        description
+        image
+        item
+        name
+        price
+        seller
+```
+
+### claimed inventory
+
+```former
+Former "claimed inventory" — inputs (user); bindings (item, name, description, price, image, seller); promises exactly one record — forms:
+  a record of
+    items: each Inventory._claimedByUser (user) has (description, image, item, name, price, seller)
       form a record of
         description
         image
@@ -289,6 +305,18 @@ then
   RequestBoundary.respond (requestId)
 ```
 
+### Claimed
+
+Authored path: `Claimed`.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 21.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 24.
+
+```reaction
+when RequestBoundary.request (path: "/inventory/claimed", requestId, user)
+then
+  RequestBoundary.respond (inventory: former "claimed inventory" with (user), requestId)
+```
+
 ### Clear
 
 Authored path: `Clear`.
@@ -382,8 +410,8 @@ then
 ### Delete
 
 Authored path: `Delete`.
-- Covered by [Inventory](../design/compositions/Inventory.md), line 27.
-- Covered by [Inventory](../design/compositions/Inventory.md), line 30.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 33.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 36.
 
 ```reaction
 when RequestBoundary.request (item, path: "/inventory/delete", requestId, user)
@@ -394,8 +422,8 @@ then
 ### Delete#2
 
 Authored path: `Delete`.
-- Covered by [Inventory](../design/compositions/Inventory.md), line 27.
-- Covered by [Inventory](../design/compositions/Inventory.md), line 30.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 33.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 36.
 
 ```reaction
 when Inventory.delete (item, user), asked by Delete
@@ -428,8 +456,8 @@ then
 ### Edit
 
 Authored path: `Edit`.
-- Covered by [Inventory](../design/compositions/Inventory.md), line 21.
-- Covered by [Inventory](../design/compositions/Inventory.md), line 24.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 27.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 30.
 
 ```reaction
 when RequestBoundary.request (description, image, item, path: "/inventory/edit", price, requestId, user)
@@ -440,8 +468,8 @@ then
 ### Edit#2
 
 Authored path: `Edit`.
-- Covered by [Inventory](../design/compositions/Inventory.md), line 21.
-- Covered by [Inventory](../design/compositions/Inventory.md), line 24.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 27.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 30.
 
 ```reaction
 when Inventory.edit (description, image, item, price, user), asked by Edit
@@ -582,8 +610,8 @@ then
 ### ReleaseClaim
 
 Authored path: `ReleaseClaim`.
-- Covered by [Inventory](../design/compositions/Inventory.md), line 33.
-- Covered by [Inventory](../design/compositions/Inventory.md), line 36.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 39.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 42.
 
 ```reaction
 when RequestBoundary.request (item, path: "/inventory/releaseClaim", requestId, user)
@@ -594,8 +622,8 @@ then
 ### ReleaseClaim#2
 
 Authored path: `ReleaseClaim`.
-- Covered by [Inventory](../design/compositions/Inventory.md), line 33.
-- Covered by [Inventory](../design/compositions/Inventory.md), line 36.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 39.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 42.
 
 ```reaction
 when Inventory.releaseClaim (item, user), asked by ReleaseClaim
@@ -736,8 +764,8 @@ then
 ### TransactionCompleted
 
 Authored path: `TransactionCompleted`.
-- Covered by [Inventory](../design/compositions/Inventory.md), line 39.
-- Covered by [Inventory](../design/compositions/Inventory.md), line 42.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 45.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 48.
 
 ```reaction
 when RequestBoundary.request (item, path: "/inventory/transactionCompleted", requestId)
@@ -748,8 +776,8 @@ then
 ### TransactionCompleted#2
 
 Authored path: `TransactionCompleted`.
-- Covered by [Inventory](../design/compositions/Inventory.md), line 39.
-- Covered by [Inventory](../design/compositions/Inventory.md), line 42.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 45.
+- Covered by [Inventory](../design/compositions/Inventory.md), line 48.
 
 ```reaction
 when Inventory.transactionCompleted (item), asked by TransactionCompleted
@@ -793,6 +821,7 @@ the path or missing key. A declared default fills an absent key. Endpoints
 not listed here have no explicit input contract.
 
 - `/inventory/claim` — requires `item`, `claimer`
+- `/inventory/claimed` — requires `user`
 - `/inventory/delete` — requires `item`, `user`
 - `/inventory/edit` — requires `item`, `user`, `description`, `price`, `image`
 - `/inventory/post` — requires `name`, `seller`, `image`, `description`, `price`

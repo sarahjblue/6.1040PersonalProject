@@ -180,4 +180,9 @@ _available():many (item: Item, name: String, description?: String, price?: Strin
 
     answers every item whose status is AVAILABLE, in the order they were posted
     answers no row when no item is available
+
+_claimedByUser(user: User):many (item: Item, name: String, description?: String, price?: String, seller: User, image: Image)
+
+    answers every item whose status is CLAIMED and buyer is user, in the order they were posted
+    answers no row when the user has no claimed items
 ```

@@ -171,4 +171,24 @@ export class InventoryConcept{
     image: item.image,
   }));
 }
+
+    async _claimedByUser({user}: {user: string}): Promise<Array<{
+  item: Item;
+  name: string;
+  description?: string;
+  price?: string;
+  seller: string;
+  image: string;
+}>> {
+  const rows = await items.find({ status: "CLAIMED", buyer: user }).toArray();
+
+  return rows.map((item) => ({
+    item,
+    name: item.name,
+    description: item.description,
+    price: item.price,
+    seller: item.seller,
+    image: item.image,
+  }));
+}
 }
