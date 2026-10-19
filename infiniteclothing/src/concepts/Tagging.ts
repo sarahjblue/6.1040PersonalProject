@@ -95,6 +95,9 @@ export class TaggingConcept {
 
   async clear({item}: {item: string}): Promise<{}> {
     await ensureIndexes();
+    if (!(await itemTags.findOne({ item }))) {
+      throw new ClearUnknownItem("This item has no tags to clear.");
+    }
     await itemTags.deleteMany({ item });
     return {};
   }
