@@ -30,7 +30,7 @@ const ClaimedInventory = former(
   ({ user }, { item, name, description, price, image, seller }) =>
     form({
       items: each(
-        Inventory._claimedByUser({ user }).is({
+        Inventory._claimedForUser({ user }).is({
           item,
           name,
           description,
@@ -98,11 +98,11 @@ const ReleaseClaim = endpoint(
 
 const TransactionCompleted = endpoint(
   "/inventory/transactionCompleted",
-  ({ item }) =>
-    receive({ item })
-      .then(Inventory.transactionCompleted({item}))
+  ({ item, user }) =>
+    receive({ item, user })
+      .then(Inventory.transactionCompleted({item, user}))
       .then(respond({})),
-  { input: { required: ["item"] } },
+  { input: { required: ["item", "user"] } },
 );
 
 export const composition = {

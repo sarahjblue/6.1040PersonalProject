@@ -32,15 +32,16 @@ Defined in [Inventory](../design/concepts/Inventory.md), line 1.
   - Refuses `RELEASE_UNKNOWN_ITEM`: There is no such item.
   - Refuses `RELEASE_UNCLAIMED`: You can not release an unclaimed item.
   - Refuses `RELEASE_NOT_BUYER`: You can not release a claim you did not make.
-- `transactionCompleted(item: Item) : returns ()`
+- `transactionCompleted(item: Item, user: User) : returns ()`
   - Refuses `COMPLETE_UNKNOWN_ITEM`: There is no such item.
   - Refuses `NOT_CLAIMED`: Only a claimed item can be completed.
+  - Refuses `NOT_SELLER_COMPLETE`: Only the seller can complete this transaction.
 
 #### Queries
 
 - `_getSeller(item: Item) : optional (seller: User)`
 - `_available() : many (item: Item, name: String, description?: String, price?: String, seller: User, image: Image)`
-- `_claimedByUser(user: User) : many (item: Item, name: String, description?: String, price?: String, seller: User, image: Image)`
+- `_claimedForUser(user: User) : many (item: Item, name: String, description?: String, price?: String, seller: User, image: Image)`
 
 #### Instances
 
@@ -170,7 +171,7 @@ Former "available inventory" — inputs (); bindings (item, name, description, p
 ```former
 Former "claimed inventory" — inputs (user); bindings (item, name, description, price, image, seller); promises exactly one record — forms:
   a record of
-    items: each Inventory._claimedByUser (user) has (description, image, item, name, price, seller)
+    items: each Inventory._claimedForUser (user) has (description, image, item, name, price, seller)
       form a record of
         description
         image
@@ -768,9 +769,9 @@ Authored path: `TransactionCompleted`.
 - Covered by [Inventory](../design/compositions/Inventory.md), line 48.
 
 ```reaction
-when RequestBoundary.request (item, path: "/inventory/transactionCompleted", requestId)
+when RequestBoundary.request (item, path: "/inventory/transactionCompleted", requestId, user)
 then
-  Inventory.transactionCompleted (item)
+  Inventory.transactionCompleted (item, user)
 ```
 
 ### TransactionCompleted#2
@@ -780,9 +781,9 @@ Authored path: `TransactionCompleted`.
 - Covered by [Inventory](../design/compositions/Inventory.md), line 48.
 
 ```reaction
-when Inventory.transactionCompleted (item), asked by TransactionCompleted
+when Inventory.transactionCompleted (item, user), asked by TransactionCompleted
 where
-  earlier, RequestBoundary.request (item, path: "/inventory/transactionCompleted", requestId)
+  earlier, RequestBoundary.request (item, path: "/inventory/transactionCompleted", requestId, user)
 then
   RequestBoundary.respond (requestId)
 ```
@@ -826,7 +827,7 @@ not listed here have no explicit input contract.
 - `/inventory/edit` — requires `item`, `user`, `description`, `price`, `image`
 - `/inventory/post` — requires `name`, `seller`, `image`, `description`, `price`
 - `/inventory/releaseClaim` — requires `item`, `user`
-- `/inventory/transactionCompleted` — requires `item`
+- `/inventory/transactionCompleted` — requires `item`, `user`
 - `/messaging/closeConversation` — requires `topic`
 - `/messaging/conversations` — requires `user`
 - `/messaging/markRead` — requires `conversation`, `reader`

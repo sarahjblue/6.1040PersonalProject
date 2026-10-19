@@ -42,7 +42,7 @@ A User [releases a claim](reaction:ReleaseClaim)
 ReleaseClaim at /inventory/releaseClaim
 ```
 
-A User [completes transaction](reaction:TransactionCompleted)
+The seller [marks a claimed transaction complete](reaction:TransactionCompleted)
 
 ```endpoints
 TransactionCompleted at /inventory/transactionCompleted

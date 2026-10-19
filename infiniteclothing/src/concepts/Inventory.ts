@@ -28,6 +28,7 @@ export class ReleaseUnclaimed extends Error {}
 export class ReleaseNotBuyer extends Error {}
 export class CompleteUnknownItem extends Error {}
 export class NotClaimed extends Error {}
+export class NotSellerComplete extends Error {}
 
 const items = db.collection<Item>("inventory");
 
@@ -132,11 +133,28 @@ export class InventoryConcept{
         return {};
     }
 
-    async transactionCompleted({item}: {item: Item}): Promise<{}> {
-        const result = await items.updateOne({id: item.id, status: "CLAIMED"}, {$set: {status: "COMPLETED"}});
+    async transactionCompleted({item, user}: {item: Item, user: string}): Promise<{}> {
+        const found = await items.findOne({id: item.id});
+
+        if(!found){
+            throw new CompleteUnknownItem("There is no such item.");
+        }
+
+        if(found.status !== "CLAIMED"){
+            throw new NotClaimed("Only a claimed item can be completed.");
+        }
+
+        if(found.seller !== user){
+            throw new NotSellerComplete("Only the seller can complete this transaction.");
+        }
+
+        const result = await items.updateOne(
+            {id: item.id, status: "CLAIMED", seller: user},
+            {$set: {status: "COMPLETED"}},
+        );
 
         if(!result.modifiedCount){
-            throw new CompleteUnknownItem("This item does not exist or is not in a claimable state.");
+            throw new NotClaimed("Only a claimed item can be completed.");
         }
 
         return {};
@@ -172,7 +190,7 @@ export class InventoryConcept{
   }));
 }
 
-    async _claimedByUser({user}: {user: string}): Promise<Array<{
+    async _claimedForUser({user}: {user: string}): Promise<Array<{
   item: Item;
   name: string;
   description?: string;
@@ -180,7 +198,10 @@ export class InventoryConcept{
   seller: string;
   image: string;
 }>> {
-  const rows = await items.find({ status: "CLAIMED", buyer: user }).toArray();
+  const rows = await items.find({
+    status: "CLAIMED",
+    $or: [{ buyer: user }, { seller: user }],
+  }).toArray();
 
   return rows.map((item) => ({
     item,

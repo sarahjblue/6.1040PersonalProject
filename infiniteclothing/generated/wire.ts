@@ -37,17 +37,17 @@ export type ApplicationWire = {
   };
   "/inventory/claimed": {
     input: {
-      "user": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedByUser"]>[0], ["user"]>>;
+      "user": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedForUser"]>[0], ["user"]>>;
     };
     output: {
       "inventory": {
         "items": {
-          "description": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedByUser"]>>>, ["description"]>>;
-          "image": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedByUser"]>>>, ["image"]>>;
-          "item": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedByUser"]>>>, ["item"]>>;
-          "name": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedByUser"]>>>, ["name"]>>;
-          "price": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedByUser"]>>>, ["price"]>>;
-          "seller": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedByUser"]>>>, ["seller"]>>;
+          "description": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedForUser"]>>>, ["description"]>>;
+          "image": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedForUser"]>>>, ["image"]>>;
+          "item": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedForUser"]>>>, ["item"]>>;
+          "name": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedForUser"]>>>, ["name"]>>;
+          "price": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedForUser"]>>>, ["price"]>>;
+          "seller": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedForUser"]>>>, ["seller"]>>;
         }[];
       };
     };
@@ -96,9 +96,10 @@ export type ApplicationWire = {
   "/inventory/transactionCompleted": {
     input: {
       "item": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Inventory"]["transactionCompleted"]>[0], ["item"]>>;
+      "user": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Inventory"]["transactionCompleted"]>[0], ["user"]>>;
     };
     output: Record<string, never>;
-    error: { error: AppWideError | "COMPLETE_UNKNOWN_ITEM" | "INVALID_INPUT" | "NOT_CLAIMED" };
+    error: { error: AppWideError | "COMPLETE_UNKNOWN_ITEM" | "INVALID_INPUT" | "NOT_CLAIMED" | "NOT_SELLER_COMPLETE" };
   };
   "/messaging/closeConversation": {
     input: {

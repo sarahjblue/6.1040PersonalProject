@@ -149,7 +149,7 @@ releaseClaim(item: Item, user: User) : returns ()
         returns
 
 
-transactionCompleted(item:Item) : returns ()
+transactionCompleted(item: Item, user: User) : returns ()
 
     where item is not in ITEMS
 
@@ -161,7 +161,12 @@ transactionCompleted(item:Item) : returns ()
     then
         refuses NOT_CLAIMED "Only a claimed item can be completed."
 
-    where item is claimed
+    where item is claimed and user is not the seller of item
+
+    then
+        refuses NOT_SELLER_COMPLETE "Only the seller can complete this transaction."
+
+    where item is claimed and user is the seller
 
     then
         set status to COMPLETED
@@ -181,8 +186,8 @@ _available():many (item: Item, name: String, description?: String, price?: Strin
     answers every item whose status is AVAILABLE, in the order they were posted
     answers no row when no item is available
 
-_claimedByUser(user: User):many (item: Item, name: String, description?: String, price?: String, seller: User, image: Image)
+_claimedForUser(user: User):many (item: Item, name: String, description?: String, price?: String, seller: User, image: Image)
 
-    answers every item whose status is CLAIMED and buyer is user, in the order they were posted
-    answers no row when the user has no claimed items
+    answers every item whose status is CLAIMED and user is its buyer or seller, in the order they were posted
+    answers no row when the user has no related claimed items
 ```

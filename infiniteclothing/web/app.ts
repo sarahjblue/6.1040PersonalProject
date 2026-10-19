@@ -99,6 +99,8 @@ function renderInventory() {
       item.status !== "AVAILABLE";
     const isClaimedByCurrentUser =
       item.status === "CLAIMED" && item.buyer === currentUser;
+    const isClaimedByCurrentSeller =
+      item.status === "CLAIMED" && item.seller === currentUser;
     claimButton.hidden = isClaimedByCurrentUser;
     claimButton.addEventListener("click", () => void claimItem(item, claimButton));
 
@@ -109,6 +111,16 @@ function renderInventory() {
     releaseButton.disabled = !isClaimedByCurrentUser || item.id === undefined;
     releaseButton.addEventListener("click", () =>
       void releaseClaim(item, releaseButton),
+    );
+
+    const completeButton = document.createElement("button");
+    completeButton.type = "button";
+    completeButton.textContent = "Mark completed";
+    completeButton.hidden = !isClaimedByCurrentSeller;
+    completeButton.disabled =
+      !isClaimedByCurrentSeller || item.id === undefined;
+    completeButton.addEventListener("click", () =>
+      void completeTransaction(item, completeButton),
     );
 
     const editButton = document.createElement("button");
@@ -123,7 +135,13 @@ function renderInventory() {
     deleteButton.disabled = !currentUser || item.seller !== currentUser;
     deleteButton.addEventListener("click", () => void deleteItem(item, deleteButton));
 
-    actions.append(claimButton, releaseButton, editButton, deleteButton);
+    actions.append(
+      claimButton,
+      releaseButton,
+      completeButton,
+      editButton,
+      deleteButton,
+    );
     card.append(image, title, details, description, actions);
     inventoryContainer.appendChild(card);
   }
@@ -276,6 +294,63 @@ async function releaseClaim(item: Item, button: HTMLButtonElement) {
   } catch (error) {
     statusMessage.textContent =
       error instanceof Error ? error.message : "Could not release claim.";
+    button.disabled = false;
+  }
+}
+
+async function completeTransaction(item: Item, button: HTMLButtonElement) {
+  if (!currentUserInput || !statusMessage) return;
+
+  const user = currentUserInput.value.trim();
+  if (!user) {
+    statusMessage.textContent =
+      "Enter your username before completing a transaction.";
+    currentUserInput.focus();
+    return;
+  }
+
+  if (item.id === undefined) {
+    statusMessage.textContent =
+      "This item has no ID and cannot be marked completed.";
+    return;
+  }
+
+  if (item.seller !== user || item.status !== "CLAIMED") {
+    statusMessage.textContent =
+      "Only the seller can complete this transaction.";
+    return;
+  }
+
+  if (
+    !window.confirm(
+      `Mark the transaction for "${item.name}" as completed? This cannot be undone.`,
+    )
+  ) {
+    return;
+  }
+
+  button.disabled = true;
+  statusMessage.textContent = "Completing transaction…";
+
+  try {
+    const response = await fetch("/api/inventory/transactionCompleted", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item, user }),
+    });
+
+    if (!response.ok) throw new Error(await readError(response));
+
+    const index = items.findIndex((candidate) => candidate.id === item.id);
+    if (index !== -1) items.splice(index, 1);
+
+    statusMessage.textContent = "Transaction completed successfully.";
+    renderInventory();
+  } catch (error) {
+    statusMessage.textContent =
+      error instanceof Error
+        ? error.message
+        : "Could not complete the transaction.";
     button.disabled = false;
   }
 }
