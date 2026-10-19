@@ -19,6 +19,25 @@ const Tags = endpoint("/tagging/tags", () =>
   receive({}).then(respond({ tags: TagList({}) })),
 );
 
+const ItemTagList = former(
+  "tags assigned to an item",
+  ({ item }, { tag, category, label }) =>
+    form({
+      tags: each(
+        Tagging._tagsForItem({ item }).is({ tag, category, label }),
+      ).form({ tag, category, label }),
+    }),
+);
+
+const ItemTags = endpoint(
+  "/tagging/itemTags",
+  ({ item }) =>
+    receive({ item }).then(
+      respond({ tags: ItemTagList({ item }) }),
+    ),
+  { input: { required: ["item"] } },
+);
+
 const SearchResults = former(
   "items matching selected tags",
   ({ selectedTags }, { item }) =>
@@ -61,4 +80,4 @@ const Clear = endpoint(
   { input: { required: ["item"] } },
 );
 
-export const composition = { Tags, Search, Tag, Untag, Clear };
+export const composition = { Tags, ItemTags, Search, Tag, Untag, Clear };

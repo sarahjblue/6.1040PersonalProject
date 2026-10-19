@@ -38,12 +38,17 @@
             <input name="image" type="url" placeholder="https://..." required />
           </label>
 
-          <div class="tags">
-            <span>Tags</span>
-            <label><input type="checkbox" name="tags" value="size" /> size</label>
-            <label><input type="checkbox" name="tags" value="color" /> color</label>
-            <label><input type="checkbox" name="tags" value="item" /> item</label>
-          </div>
+          <fieldset class="tag-fields">
+            <legend>Tags</legend>
+            <label>
+              Size
+              <select id="size-tag" name="sizeTag"></select>
+            </label>
+            <label>
+              Color
+              <select id="color-tag" name="colorTag"></select>
+            </label>
+          </fieldset>
 
           <button type="submit">POST</button>
         </form>
@@ -57,6 +62,19 @@
           Your username
           <input id="current-user" type="text" placeholder="username" required />
         </label>
+        <fieldset class="tag-filters">
+          <legend>Filter by tags</legend>
+          <label>
+            Size
+            <select id="filter-size-tag"></select>
+          </label>
+          <label>
+            Color
+            <select id="filter-color-tag"></select>
+          </label>
+          <button id="apply-tag-filter" type="button">Apply filters</button>
+          <button id="clear-tag-filter" type="button">Clear filters</button>
+        </fieldset>
         <div id="inventory" class="inventory"></div>
       </section>
     </main>

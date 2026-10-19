@@ -83,4 +83,9 @@ _search(selectedTags: Tags): many (item: Item)
 _tags() : many (tag: Tag, category: String, label: String)
 
     answers every predefined tag
+
+_tagsForItem(item: Item) : many (tag: Tag, category: String, label: String)
+
+    answers every tag assigned to item
+    answers no row when item has no tags
 ```

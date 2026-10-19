@@ -130,4 +130,18 @@ export class TaggingConcept {
 
     return definitions.map(({ _id, category, label }) => ({ tag: _id, category, label }));
   }
+
+  async _tagsForItem({item}: {item: string}): Promise<Array<{ tag: string; category: string; label: string }>> {
+    await ensureIndexes();
+
+    const definitions = await itemTags.find({ item })
+      .sort({ category: 1, label: 1 })
+      .toArray();
+
+    return definitions.map(({ category, label }) => ({
+      tag: tagId({ category, label }),
+      category,
+      label,
+    }));
+  }
 }

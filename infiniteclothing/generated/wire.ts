@@ -206,6 +206,21 @@ export type ApplicationWire = {
     output: Record<string, never>;
     error: { error: AppWideError | "CLEAR_UNKNOWN_ITEM" | "INVALID_INPUT" };
   };
+  "/tagging/itemTags": {
+    input: {
+      "item": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Tagging"]["_tagsForItem"]>[0], ["item"]>>;
+    };
+    output: {
+      "tags": {
+        "tags": {
+          "category": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Tagging"]["_tagsForItem"]>>>, ["category"]>>;
+          "label": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Tagging"]["_tagsForItem"]>>>, ["label"]>>;
+          "tag": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Tagging"]["_tagsForItem"]>>>, ["tag"]>>;
+        }[];
+      };
+    };
+    error: { error: AppWideError | "INVALID_INPUT" };
+  };
   "/tagging/search": {
     input: {
       "selectedTags": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Tagging"]["_search"]>[0], ["selectedTags"]>>;

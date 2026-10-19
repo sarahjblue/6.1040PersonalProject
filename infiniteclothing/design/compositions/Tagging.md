@@ -6,6 +6,12 @@ A User can [list the predefined tags](reaction:Tags)
 Tags at /tagging/tags
 ```
 
+A User can [list the tags assigned to an item](reaction:ItemTags)
+
+```endpoints
+ItemTags at /tagging/itemTags
+```
+
 A User can [search items by tags](reaction:Search)
 
 ```endpoints

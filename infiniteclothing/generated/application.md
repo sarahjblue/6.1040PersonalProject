@@ -134,6 +134,7 @@ Defined in [Tagging](../design/concepts/Tagging.md), line 1.
 
 - `_search(selectedTags: Tags) : many (item: Item)`
 - `_tags() : many (tag: Tag, category: String, label: String)`
+- `_tagsForItem(item: Item) : many (tag: Tag, category: String, label: String)`
 
 #### Instances
 
@@ -224,6 +225,18 @@ Former "messages in a conversation" — inputs (conversation, reader); bindings 
 Former "predefined tags" — inputs (); bindings (tag, category, label); promises exactly one record — forms:
   a record of
     tags: each Tagging._tags () has (category, label, tag)
+      form a record of
+        category
+        label
+        tag
+```
+
+### tags assigned to an item
+
+```former
+Former "tags assigned to an item" — inputs (item); bindings (tag, category, label); promises exactly one record — forms:
+  a record of
+    tags: each Tagging._tagsForItem (item) has (category, label, tag)
       form a record of
         category
         label
@@ -321,8 +334,8 @@ then
 ### Clear
 
 Authored path: `Clear`.
-- Covered by [Tagging](../design/compositions/Tagging.md), line 27.
-- Covered by [Tagging](../design/compositions/Tagging.md), line 30.
+- Covered by [Tagging](../design/compositions/Tagging.md), line 33.
+- Covered by [Tagging](../design/compositions/Tagging.md), line 36.
 
 ```reaction
 when RequestBoundary.request (item, path: "/tagging/clear", requestId)
@@ -333,8 +346,8 @@ then
 ### Clear#2
 
 Authored path: `Clear`.
-- Covered by [Tagging](../design/compositions/Tagging.md), line 27.
-- Covered by [Tagging](../design/compositions/Tagging.md), line 30.
+- Covered by [Tagging](../design/compositions/Tagging.md), line 33.
+- Covered by [Tagging](../design/compositions/Tagging.md), line 36.
 
 ```reaction
 when Tagging.clear (item), asked by Clear
@@ -492,6 +505,18 @@ then
   RequestBoundary.respond (requestId, result: former "user associated with a session" with (session))
 ```
 
+### ItemTags
+
+Authored path: `ItemTags`.
+- Covered by [Tagging](../design/compositions/Tagging.md), line 9.
+- Covered by [Tagging](../design/compositions/Tagging.md), line 12.
+
+```reaction
+when RequestBoundary.request (item, path: "/tagging/itemTags", requestId)
+then
+  RequestBoundary.respond (requestId, tags: former "tags assigned to an item" with (item))
+```
+
 ### MarkRead
 
 Authored path: `MarkRead`.
@@ -637,8 +662,8 @@ then
 ### Search
 
 Authored path: `Search`.
-- Covered by [Tagging](../design/compositions/Tagging.md), line 9.
-- Covered by [Tagging](../design/compositions/Tagging.md), line 12.
+- Covered by [Tagging](../design/compositions/Tagging.md), line 15.
+- Covered by [Tagging](../design/compositions/Tagging.md), line 18.
 
 ```reaction
 when RequestBoundary.request (path: "/tagging/search", requestId, selectedTags)
@@ -727,8 +752,8 @@ then
 ### Tag
 
 Authored path: `Tag`.
-- Covered by [Tagging](../design/compositions/Tagging.md), line 15.
-- Covered by [Tagging](../design/compositions/Tagging.md), line 18.
+- Covered by [Tagging](../design/compositions/Tagging.md), line 21.
+- Covered by [Tagging](../design/compositions/Tagging.md), line 24.
 
 ```reaction
 when RequestBoundary.request (item, path: "/tagging/tag", requestId, tag)
@@ -739,8 +764,8 @@ then
 ### Tag#2
 
 Authored path: `Tag`.
-- Covered by [Tagging](../design/compositions/Tagging.md), line 15.
-- Covered by [Tagging](../design/compositions/Tagging.md), line 18.
+- Covered by [Tagging](../design/compositions/Tagging.md), line 21.
+- Covered by [Tagging](../design/compositions/Tagging.md), line 24.
 
 ```reaction
 when Tagging.tag (item, tag), asked by Tag
@@ -791,8 +816,8 @@ then
 ### Untag
 
 Authored path: `Untag`.
-- Covered by [Tagging](../design/compositions/Tagging.md), line 21.
-- Covered by [Tagging](../design/compositions/Tagging.md), line 24.
+- Covered by [Tagging](../design/compositions/Tagging.md), line 27.
+- Covered by [Tagging](../design/compositions/Tagging.md), line 30.
 
 ```reaction
 when RequestBoundary.request (item, path: "/tagging/untag", requestId, tag)
@@ -803,8 +828,8 @@ then
 ### Untag#2
 
 Authored path: `Untag`.
-- Covered by [Tagging](../design/compositions/Tagging.md), line 21.
-- Covered by [Tagging](../design/compositions/Tagging.md), line 24.
+- Covered by [Tagging](../design/compositions/Tagging.md), line 27.
+- Covered by [Tagging](../design/compositions/Tagging.md), line 30.
 
 ```reaction
 when Tagging.untag (item, tag), asked by Untag
@@ -837,6 +862,7 @@ not listed here have no explicit input contract.
 - `/sessioning/sessionOpen` — requires `user`
 - `/sessioning/user` — requires `session`
 - `/tagging/clear` — requires `item`
+- `/tagging/itemTags` — requires `item`
 - `/tagging/search` — requires `selectedTags`
 - `/tagging/tag` — requires `item`, `tag`
 - `/tagging/untag` — requires `item`, `tag`
