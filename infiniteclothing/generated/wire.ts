@@ -174,7 +174,9 @@ export type ApplicationWire = {
       "recipient": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Messaging"]["startConversation"]>[0], ["recipient"]>>;
       "topic": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["Messaging"]["startConversation"]>[0], ["topic"]>>;
     };
-    output: Record<string, never>;
+    output: {
+      "conversation": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Messaging"]["startConversation"]>>, ["conversation"]>>;
+    };
     error: { error: AppWideError | "CONVERSATION_EXISTS" | "INVALID_INPUT" | "SELF_MESSAGE" };
   };
   "/sessioning/sessionOpen": {

@@ -742,11 +742,11 @@ Authored path: `StartConversation`.
 - Covered by [Messaging](../design/compositions/Messaging.md), line 6.
 
 ```reaction
-when Messaging.startConversation (content, initiator, recipient, topic), asked by StartConversation
+when Messaging.startConversation (content, initiator, recipient, topic, conversation), asked by StartConversation
 where
   earlier, RequestBoundary.request (content, initiator, path: "/messaging/startConversation", recipient, requestId, topic)
 then
-  RequestBoundary.respond (requestId)
+  RequestBoundary.respond (conversation, requestId)
 ```
 
 ### Tag

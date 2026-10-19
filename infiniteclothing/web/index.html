@@ -76,6 +76,49 @@
           <button id="clear-tag-filter" type="button">Clear filters</button>
         </fieldset>
         <div id="inventory" class="inventory"></div>
+
+        <section class="messaging">
+          <h2>Messages</h2>
+          <form id="start-conversation-form" class="message-compose">
+            <label>
+              Message seller
+              <input
+                id="message-recipient"
+                type="text"
+                placeholder="seller username"
+                required
+              />
+            </label>
+            <label>
+              Item ID
+              <input id="message-topic" type="text" placeholder="Select from an item" required />
+            </label>
+            <label>
+              First message
+              <textarea id="initial-message" rows="2" required></textarea>
+            </label>
+            <button type="submit">Start conversation</button>
+          </form>
+          <div class="message-layout">
+            <div>
+              <h3>Your conversations</h3>
+              <div id="conversation-list" class="conversation-list"></div>
+            </div>
+            <div class="message-thread">
+              <h3 id="thread-title">Select a conversation</h3>
+              <div id="message-list" class="message-list" aria-live="polite"></div>
+              <form id="send-message-form" class="message-compose">
+                <label>
+                  Reply
+                  <textarea id="reply-content" rows="2" required></textarea>
+                </label>
+                <button id="send-message-button" type="submit" disabled>
+                  Send message
+                </button>
+              </form>
+            </div>
+          </div>
+        </section>
       </section>
     </main>
   </body>

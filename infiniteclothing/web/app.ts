@@ -16,6 +16,22 @@ type TagDefinition = {
   label: string;
 };
 
+type Conversation = {
+  conversation: number;
+  topic: string;
+  initiator: string;
+  recipient: string;
+  closedAt?: number;
+};
+
+type Message = {
+  message: number;
+  sender: string;
+  content: string;
+  sentAt: number;
+  readStatus: "UNREAD" | "READ";
+};
+
 const form = document.querySelector<HTMLFormElement>("#item-form");
 const statusMessage = document.querySelector<HTMLParagraphElement>("#status");
 const inventoryContainer = document.querySelector<HTMLDivElement>("#inventory");
@@ -30,6 +46,24 @@ const applyTagFilterButton =
   document.querySelector<HTMLButtonElement>("#apply-tag-filter");
 const clearTagFilterButton =
   document.querySelector<HTMLButtonElement>("#clear-tag-filter");
+const startConversationForm =
+  document.querySelector<HTMLFormElement>("#start-conversation-form");
+const messageRecipientInput =
+  document.querySelector<HTMLInputElement>("#message-recipient");
+const messageTopicInput =
+  document.querySelector<HTMLInputElement>("#message-topic");
+const initialMessageInput =
+  document.querySelector<HTMLTextAreaElement>("#initial-message");
+const conversationList =
+  document.querySelector<HTMLDivElement>("#conversation-list");
+const threadTitle = document.querySelector<HTMLHeadingElement>("#thread-title");
+const messageList = document.querySelector<HTMLDivElement>("#message-list");
+const sendMessageForm =
+  document.querySelector<HTMLFormElement>("#send-message-form");
+const replyContentInput =
+  document.querySelector<HTMLTextAreaElement>("#reply-content");
+const sendMessageButton =
+  document.querySelector<HTMLButtonElement>("#send-message-button");
 
 if (
   !form ||
@@ -41,7 +75,17 @@ if (
   !sizeFilterSelect ||
   !colorFilterSelect ||
   !applyTagFilterButton ||
-  !clearTagFilterButton
+  !clearTagFilterButton ||
+  !startConversationForm ||
+  !messageRecipientInput ||
+  !messageTopicInput ||
+  !initialMessageInput ||
+  !conversationList ||
+  !threadTitle ||
+  !messageList ||
+  !sendMessageForm ||
+  !replyContentInput ||
+  !sendMessageButton
 ) {
   throw new Error("Missing frontend elements. Check the IDs in index.html.");
 }
@@ -49,6 +93,8 @@ if (
 const items: Item[] = [];
 let tagDefinitions: TagDefinition[] = [];
 let visibleItemIds: Set<number> | undefined;
+let conversations: Conversation[] = [];
+let selectedConversation: Conversation | undefined;
 
 function getRows(data: unknown): unknown[] | undefined {
   if (!data || typeof data !== "object") return undefined;
@@ -57,6 +103,8 @@ function getRows(data: unknown): unknown[] | undefined {
 
   if (Array.isArray(value.items)) return value.items;
   if (Array.isArray(value.tags)) return value.tags;
+  if (Array.isArray(value.conversations)) return value.conversations;
+  if (Array.isArray(value.messages)) return value.messages;
   if (Array.isArray(value.result)) return value.result;
 
   return (
@@ -85,6 +133,64 @@ function extractTags(data: unknown): TagDefinition[] | undefined {
     }
     return { tag: row.tag, category: row.category, label: row.label };
   });
+}
+
+function extractConversations(data: unknown): Conversation[] | undefined {
+  const rows = getRows(data);
+  if (!rows) return undefined;
+
+  const loaded: Conversation[] = [];
+  for (const value of rows) {
+    if (!value || typeof value !== "object") return undefined;
+    const row = value as Record<string, unknown>;
+    const id = Number(row.conversation);
+    if (
+      !Number.isFinite(id) ||
+      typeof row.topic !== "string" ||
+      typeof row.initiator !== "string" ||
+      typeof row.recipient !== "string"
+    ) {
+      return undefined;
+    }
+    loaded.push({
+      conversation: id,
+      topic: row.topic,
+      initiator: row.initiator,
+      recipient: row.recipient,
+      closedAt:
+        typeof row.closedAt === "number" ? row.closedAt : undefined,
+    });
+  }
+  return loaded;
+}
+
+function extractMessages(data: unknown): Message[] | undefined {
+  const rows = getRows(data);
+  if (!rows) return undefined;
+
+  const loaded: Message[] = [];
+  for (const value of rows) {
+    if (!value || typeof value !== "object") return undefined;
+    const row = value as Record<string, unknown>;
+    const id = Number(row.message);
+    if (
+      !Number.isFinite(id) ||
+      typeof row.sender !== "string" ||
+      typeof row.content !== "string" ||
+      typeof row.sentAt !== "number" ||
+      (row.readStatus !== "READ" && row.readStatus !== "UNREAD")
+    ) {
+      return undefined;
+    }
+    loaded.push({
+      message: id,
+      sender: row.sender,
+      content: row.content,
+      sentAt: row.sentAt,
+      readStatus: row.readStatus,
+    });
+  }
+  return loaded;
 }
 
 function extractItems(data: unknown): Item[] | undefined {
@@ -153,6 +259,14 @@ function renderInventory() {
     if(inventoryContainer === null){
         return {};
     }
+  if (
+    !messageRecipientInput ||
+    !messageTopicInput ||
+    !initialMessageInput ||
+    !startConversationForm
+  ) {
+    return;
+  }
   inventoryContainer.replaceChildren();
   if(currentUserInput === null){
     return {};
@@ -209,6 +323,20 @@ function renderInventory() {
       item.status === "CLAIMED" && item.seller === currentUser;
     claimButton.hidden = isClaimedByCurrentUser;
     claimButton.addEventListener("click", () => void claimItem(item, claimButton));
+
+    const messageSellerButton = document.createElement("button");
+    messageSellerButton.type = "button";
+    messageSellerButton.textContent = "Message seller";
+    messageSellerButton.hidden =
+      !currentUser || item.seller === currentUser || item.status === "COMPLETED";
+    messageSellerButton.addEventListener("click", () => {
+      messageRecipientInput.value = item.seller;
+      messageTopicInput.value =
+        item.id === undefined ? "" : String(item.id);
+      messageTopicInput.readOnly = item.id !== undefined;
+      initialMessageInput.focus();
+      startConversationForm.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
 
     const releaseButton = document.createElement("button");
     releaseButton.type = "button";
@@ -284,6 +412,7 @@ function renderInventory() {
 
     actions.append(
       claimButton,
+      messageSellerButton,
       releaseButton,
       completeButton,
       editButton,
@@ -337,6 +466,166 @@ async function fetchItemTags(item: Item): Promise<TagDefinition[]> {
   const tags = extractTags(await response.json());
   if (!tags) throw new Error("Unexpected item-tags response.");
   return tags;
+}
+
+function renderConversations() {
+  if (!conversationList || !currentUserInput) return;
+  conversationList.replaceChildren();
+  const user = currentUserInput.value.trim();
+
+  if (!user) {
+    conversationList.textContent = "Enter your username to view messages.";
+    return;
+  }
+  if (!conversations.length) {
+    conversationList.textContent = "No conversations yet.";
+    return;
+  }
+
+  for (const conversation of conversations) {
+    const button = document.createElement("button");
+    button.type = "button";
+    const otherUser =
+      conversation.initiator === user
+        ? conversation.recipient
+        : conversation.initiator;
+    button.textContent = `${otherUser} · Item ${conversation.topic}${
+      conversation.closedAt === undefined ? "" : " · Closed"
+    }`;
+    button.setAttribute(
+      "aria-current",
+      selectedConversation?.conversation === conversation.conversation
+        ? "true"
+        : "false",
+    );
+    button.addEventListener("click", () => void openConversation(conversation));
+    conversationList.appendChild(button);
+  }
+}
+
+async function loadConversations() {
+  if (
+    !statusMessage ||
+    !currentUserInput ||
+    !conversationList ||
+    !messageList ||
+    !threadTitle ||
+    !sendMessageButton
+  ) {
+    return;
+  }
+  const user = currentUserInput.value.trim();
+  if (!user) {
+    conversations = [];
+    selectedConversation = undefined;
+    conversationList.replaceChildren();
+    messageList.replaceChildren();
+    threadTitle.textContent = "Select a conversation";
+    sendMessageButton.disabled = true;
+    renderConversations();
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/messaging/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user }),
+    });
+    if (!response.ok) throw new Error(await readError(response));
+
+    const loaded = extractConversations(await response.json());
+    if (!loaded) throw new Error("Unexpected conversations response.");
+    conversations = loaded;
+    selectedConversation = selectedConversation
+      ? loaded.find(
+          (conversation) =>
+            conversation.conversation === selectedConversation?.conversation,
+        )
+      : undefined;
+    renderConversations();
+    if (selectedConversation) {
+      await loadMessages(selectedConversation, false);
+    } else {
+      messageList.replaceChildren();
+      threadTitle.textContent = "Select a conversation";
+      sendMessageButton.disabled = true;
+    }
+  } catch (error) {
+    statusMessage.textContent =
+      error instanceof Error ? error.message : "Could not load conversations.";
+  }
+}
+
+async function loadMessages(conversation: Conversation, markRead: boolean) {
+  if (
+    !statusMessage ||
+    !currentUserInput ||
+    !sendMessageButton ||
+    !threadTitle ||
+    !messageList
+  ) {
+    return;
+  }
+  const reader = currentUserInput.value.trim();
+  selectedConversation = conversation;
+  renderConversations();
+  sendMessageButton.disabled = conversation.closedAt !== undefined;
+
+  const otherUser =
+    conversation.initiator === reader
+      ? conversation.recipient
+      : conversation.initiator;
+  threadTitle.textContent = `Conversation with ${otherUser} · Item ${conversation.topic}${
+    conversation.closedAt === undefined ? "" : " · Closed"
+  }`;
+
+  try {
+    if (markRead) {
+      const readResponse = await fetch("/api/messaging/markRead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversation: conversation.conversation,
+          reader,
+        }),
+      });
+      if (!readResponse.ok) throw new Error(await readError(readResponse));
+    }
+
+    const response = await fetch("/api/messaging/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversation: conversation.conversation,
+        reader,
+      }),
+    });
+    if (!response.ok) throw new Error(await readError(response));
+
+    const loaded = extractMessages(await response.json());
+    if (!loaded) throw new Error("Unexpected messages response.");
+    messageList.replaceChildren();
+    for (const message of loaded) {
+      const bubble = document.createElement("article");
+      bubble.className = `message${message.sender === reader ? " mine" : ""}`;
+      const content = document.createElement("p");
+      content.textContent = message.content;
+      const meta = document.createElement("small");
+      meta.className = "message-meta";
+      meta.textContent = `${message.sender} · ${new Date(message.sentAt).toLocaleString()}`;
+      bubble.append(content, meta);
+      messageList.appendChild(bubble);
+    }
+    messageList.scrollTop = messageList.scrollHeight;
+  } catch (error) {
+    statusMessage.textContent =
+      error instanceof Error ? error.message : "Could not load messages.";
+  }
+}
+
+async function openConversation(conversation: Conversation) {
+  await loadMessages(conversation, true);
 }
 
 async function fetchInventory() {
@@ -822,6 +1111,107 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
+startConversationForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!statusMessage) return;
+
+  const initiator = currentUserInput.value.trim();
+  const recipient = messageRecipientInput.value.trim();
+  const topic = messageTopicInput.value.trim();
+  const content = initialMessageInput.value.trim();
+  if (!initiator) {
+    statusMessage.textContent = "Enter your username before messaging.";
+    currentUserInput.focus();
+    return;
+  }
+  if (!recipient || !topic || !content) {
+    statusMessage.textContent =
+      "Enter a recipient, item ID, and first message.";
+    return;
+  }
+  if (initiator === recipient) {
+    statusMessage.textContent = "You cannot start a conversation with yourself.";
+    return;
+  }
+
+  const submitButton =
+    startConversationForm.querySelector<HTMLButtonElement>(
+      'button[type="submit"]',
+    );
+  if (!submitButton) throw new Error("Missing start-conversation button.");
+  submitButton.disabled = true;
+  try {
+    const response = await fetch("/api/messaging/startConversation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initiator, recipient, topic, content }),
+    });
+    if (!response.ok) throw new Error(await readError(response));
+
+    const result = (await response.json()) as { conversation?: unknown };
+    const conversationId = Number(result.conversation);
+    if (!Number.isFinite(conversationId)) {
+      throw new Error("Unexpected start-conversation response.");
+    }
+
+    initialMessageInput.value = "";
+    statusMessage.textContent = "Conversation started.";
+    await loadConversations();
+    const created = conversations.find(
+      (conversation) => conversation.conversation === conversationId,
+    );
+    if (created) await loadMessages(created, false);
+  } catch (error) {
+    statusMessage.textContent =
+      error instanceof Error
+        ? error.message
+        : "Could not start the conversation.";
+  } finally {
+    submitButton.disabled = false;
+  }
+});
+
+sendMessageForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!statusMessage) return;
+
+  const conversation = selectedConversation;
+  const sender = currentUserInput.value.trim();
+  const content = replyContentInput.value.trim();
+  if (!conversation || conversation.closedAt !== undefined) {
+    statusMessage.textContent =
+      "Select an open conversation before replying.";
+    return;
+  }
+  if (!sender || !content) {
+    statusMessage.textContent = "Enter your username and a message.";
+    return;
+  }
+
+  sendMessageButton.disabled = true;
+  try {
+    const response = await fetch("/api/messaging/sendMessage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversation: conversation.conversation,
+        sender,
+        content,
+      }),
+    });
+    if (!response.ok) throw new Error(await readError(response));
+
+    replyContentInput.value = "";
+    statusMessage.textContent = "Message sent.";
+    await loadMessages(conversation, false);
+  } catch (error) {
+    statusMessage.textContent =
+      error instanceof Error ? error.message : "Could not send the message.";
+  } finally {
+    sendMessageButton.disabled = conversation.closedAt !== undefined;
+  }
+});
+
 applyTagFilterButton.addEventListener("click", () => void applyTagFilters());
 clearTagFilterButton.addEventListener("click", () => {
   sizeFilterSelect.value = "";
@@ -831,9 +1221,15 @@ clearTagFilterButton.addEventListener("click", () => {
   statusMessage.textContent = "Showing all inventory.";
 });
 currentUserInput.addEventListener("input", renderInventory);
-currentUserInput.addEventListener("change", () => void fetchInventory());
+currentUserInput.addEventListener("change", () => {
+  void fetchInventory();
+  void loadConversations();
+});
 void loadTagDefinitions()
-  .then(fetchInventory)
+  .then(async () => {
+    await fetchInventory();
+    await loadConversations();
+  })
   .catch((error: unknown) => {
     statusMessage.textContent =
       error instanceof Error ? error.message : "Could not load tags.";

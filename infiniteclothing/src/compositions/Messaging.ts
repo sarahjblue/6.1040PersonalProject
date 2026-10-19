@@ -31,12 +31,13 @@ const Conversation = endpoint(
 
 const StartConversation = endpoint(
   "/messaging/startConversation",
-  ({ initiator, recipient, topic, content }) =>
+  ({ initiator, recipient, topic, content, conversation }) =>
     receive({ initiator, recipient, topic, content })
       .then(
         Messaging.startConversation({ initiator, recipient, topic, content })
-            .responds({}),
-      ).then(respond({})),
+          .responds({ conversation }),
+      )
+      .then(respond({ conversation })),
   { input: { required: ["initiator", "recipient", "topic", "content"] } },
 );
 
