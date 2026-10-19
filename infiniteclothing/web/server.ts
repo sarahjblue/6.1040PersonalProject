@@ -7,8 +7,7 @@ const frontendPort = Number(process.env.PORT ?? 3001);
 
 async function proxy(request: Request) {
   const incoming = new URL(request.url);
-  const path = incoming.pathname.replace(/^\/api(?=\/)/, "");
-  const target = new URL(`${path}${incoming.search}`, backend);
+  const target = new URL(`${incoming.pathname}${incoming.search}`, backend);
 
   try {
     const headers = new Headers(request.headers);

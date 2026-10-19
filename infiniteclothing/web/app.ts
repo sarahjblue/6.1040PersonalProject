@@ -102,7 +102,13 @@ function renderInventory() {
     editButton.disabled = !currentUser || item.seller !== currentUser;
     editButton.addEventListener("click", () => void editItem(item));
 
-    actions.append(claimButton, editButton);
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.textContent = "Delete";
+    deleteButton.disabled = !currentUser || item.seller !== currentUser;
+    deleteButton.addEventListener("click", () => void deleteItem(item, deleteButton));
+
+    actions.append(claimButton, editButton, deleteButton);
     card.append(image, title, details, description, actions);
     inventoryContainer.appendChild(card);
   }
@@ -227,6 +233,52 @@ async function editItem(item: Item) {
     }
     statusMessage.textContent =
       error instanceof Error ? error.message : "Could not edit item.";
+  }
+}
+
+async function deleteItem(item: Item, button: HTMLButtonElement) {
+  if (!currentUserInput || !statusMessage) return;
+
+  const user = currentUserInput.value.trim();
+  if (!user) {
+    statusMessage.textContent = "Enter your username before deleting an item.";
+    currentUserInput.focus();
+    return;
+  }
+
+  if (item.id === undefined) {
+    statusMessage.textContent = "This item has no ID and cannot be deleted.";
+    return;
+  }
+
+  if (item.seller !== user) {
+    statusMessage.textContent = "Only the seller can delete this item.";
+    return;
+  }
+
+  if (!window.confirm(`Delete "${item.name}"? This cannot be undone.`)) return;
+
+  button.disabled = true;
+  statusMessage.textContent = "Deleting item…";
+
+  try {
+    const response = await fetch("/api/inventory/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item, user }),
+    });
+
+    if (!response.ok) throw new Error(await readError(response));
+
+    const index = items.findIndex((candidate) => candidate.id === item.id);
+    if (index !== -1) items.splice(index, 1);
+
+    statusMessage.textContent = "Item deleted successfully.";
+    renderInventory();
+  } catch (error) {
+    statusMessage.textContent =
+      error instanceof Error ? error.message : "Could not delete item.";
+    button.disabled = false;
   }
 }
 
