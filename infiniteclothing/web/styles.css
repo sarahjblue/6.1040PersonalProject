@@ -19,6 +19,53 @@ body {
   font-family: system-ui, sans-serif;
 }
 
+#authenticated-app[hidden],
+.auth-panel[hidden] {
+  display: none;
+}
+
+.auth-panel {
+  width: min(440px, calc(100% - 2rem));
+  margin: 3rem auto;
+}
+
+.auth-form {
+  display: grid;
+  gap: 0.8rem;
+  margin: 1rem 0;
+}
+
+.auth-form h2 {
+  margin: 0;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+
+.auth-details {
+  margin-top: 1rem;
+}
+
+.auth-details > summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.account-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem 0;
+}
+
+.account-bar button {
+  padding: 0.45rem 0.75rem;
+}
+
 .page {
   max-width: 1100px;
   margin: 2rem auto;

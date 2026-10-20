@@ -6,12 +6,13 @@ identify users; prevent one user from pretending to be another; only permit acco
 
 ## Principle
 
-after a user registers with a username and a password, they utilize their MIT email to confirm their account. from then, they can authenticate with that same username and password and be treated each time as the same user.
+after a user registers with a username, password, and MIT email, their account is immediately active. they can authenticate with that same username and password and be treated each time as the same user.
 
 ## Types
+
 ```types
 Confirmation is UNCONFIRMED or CONFIRMED
-    whether the owner of an account has proven control of its MIT email
+    whether the account is active
 ```
 
 ## State
@@ -20,15 +21,14 @@ Confirmation is UNCONFIRMED or CONFIRMED
 a set of Users with
     a unique username String
     a password String
-    an optional token String
-    a confirmation Confirmation
     a unique email String
+    a confirmation Confirmation
 ```
 
 ## Actions
 
 ```actions
-register(username: String, email: String, password: String): returns (user: User, token: String)
+register(username: String, email: String, password: String): returns (user: User)
 
     where username is already used
 
@@ -49,23 +49,7 @@ register(username: String, email: String, password: String): returns (user: User
 
     then
         create a new User with the username, email, and password
-        create a token
-        Mark the user as unconfirmed
-        returns user, token
-
-
-confirm(token: String): returns (user: User)
-
-    where token does not match that of any users
-
-    then
-        refuses INVALID_TOKEN "This token is not associated with any account."
-
-    where there exists a User who has a token matching token
-
-    then
-        remove the token from user
-        mark the user as confirmed.
+        mark the account as CONFIRMED
         returns user
 
 
@@ -81,13 +65,7 @@ authenticate(username: String, password: String): returns (user: User)
     then
         refuses INCORRECT_PASSWORD "Incorrect password. Please try again."
 
-    where username is in Users, password matches, and confirmed is CONFIRMED
-
-    then
-        refuses NOT_CONFIRMED "Your account is not confirmed. Please confirm."
-
-
-    where username is in Users, password matches the one associated with the username, and confirmed is CONFIRMED is set to true
+    where username is in Users and password matches the one associated with the username
 
     then
         returns user

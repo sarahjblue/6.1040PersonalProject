@@ -271,16 +271,7 @@ export type ApplicationWire = {
     output: {
       "user": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["MITUserVerification"]["authenticate"]>>, ["user"]>>;
     };
-    error: { error: AppWideError | "INCORRECT_PASSWORD" | "INVALID_INPUT" | "NOT_CONFIRMED" | "NO_USERNAME_FOUND" };
-  };
-  "/users/confirm": {
-    input: {
-      "token": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["MITUserVerification"]["confirm"]>[0], ["token"]>>;
-    };
-    output: {
-      "user": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["MITUserVerification"]["confirm"]>>, ["user"]>>;
-    };
-    error: { error: AppWideError | "INVALID_INPUT" | "INVALID_TOKEN" };
+    error: { error: AppWideError | "INCORRECT_PASSWORD" | "INVALID_INPUT" | "NO_USERNAME_FOUND" };
   };
   "/users/register": {
     input: {
@@ -289,7 +280,6 @@ export type ApplicationWire = {
       "username": Jsonify<AtPath<Parameters<(typeof ApplicationConceptSet.concepts)["MITUserVerification"]["register"]>[0], ["username"]>>;
     };
     output: {
-      "token": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["MITUserVerification"]["register"]>>, ["token"]>>;
       "user": Jsonify<AtPath<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["MITUserVerification"]["register"]>>, ["user"]>>;
     };
     error: { error: AppWideError | "EMAIL_ALREADY_USED" | "INVALID_INPUT" | "NOT_MIT" | "USERNAME_ALREADY_USED" };

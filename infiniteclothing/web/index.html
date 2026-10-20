@@ -8,14 +8,75 @@
     <script type="module" src="./app.ts"></script>
   </head>
   <body>
-    <main class="page">
+    <section id="auth-panel" class="panel auth-panel" aria-labelledby="auth-title">
+      <h1 id="auth-title">Infinite Clothing</h1>
+      <p id="auth-status" class="status" aria-live="polite">
+        Sign in with your MIT account.
+      </p>
+
+      <form id="login-form" class="auth-form">
+        <h2>Sign in</h2>
+        <label>
+          Username
+          <input name="username" type="text" autocomplete="username" required />
+        </label>
+        <label>
+          Password
+          <input
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+        </label>
+        <button type="submit">Sign in</button>
+      </form>
+
+      <details class="auth-details">
+        <summary>Create an account</summary>
+        <form id="register-form" class="auth-form">
+          <label>
+            Username
+            <input name="username" type="text" autocomplete="username" required />
+          </label>
+          <label>
+            MIT email
+            <input
+              name="email"
+              type="email"
+              autocomplete="email"
+              placeholder="you@mit.edu"
+              required
+            />
+          </label>
+          <label>
+            Password
+            <input
+              name="password"
+              type="password"
+              autocomplete="new-password"
+              required
+            />
+          </label>
+          <button type="submit">Register</button>
+        </form>
+      </details>
+
+    </section>
+
+    <div id="authenticated-app" hidden>
+      <header class="account-bar">
+        <span>Signed in as <strong id="signed-in-user"></strong></span>
+        <button id="logout-button" type="button">Sign out</button>
+      </header>
+      <main class="page">
       <section class="panel">
         <h1>Post an item</h1>
 
         <form id="item-form" class="item-form">
           <label>
             Seller
-            <input name="seller" type="text" placeholder="username" required />
+            <input name="seller" type="text" readonly required />
           </label>
 
           <label>
@@ -65,7 +126,7 @@
         <h2>Marketplace</h2>
         <label>
           Your username
-          <input id="current-user" type="text" placeholder="username" required />
+          <input id="current-user" type="text" readonly required />
         </label>
         <fieldset class="tag-filters">
           <legend>Filter by tags</legend>
@@ -82,23 +143,23 @@
         </fieldset>
         <div id="inventory" class="inventory"></div>
       </section>
-    </main>
+      </main>
 
-    <button
-      id="messages-launcher"
-      class="messages-launcher"
-      type="button"
-      aria-expanded="false"
-      aria-controls="messages-panel"
-    >
-      Messages
-    </button>
-    <section
-      id="messages-panel"
-      class="messaging-panel"
-      aria-label="Messages"
-      hidden
-    >
+      <button
+        id="messages-launcher"
+        class="messages-launcher"
+        type="button"
+        aria-expanded="false"
+        aria-controls="messages-panel"
+      >
+        Messages
+      </button>
+      <section
+        id="messages-panel"
+        class="messaging-panel"
+        aria-label="Messages"
+        hidden
+      >
       <header class="messaging-header">
         <h2>Messages</h2>
         <div class="messaging-actions">
@@ -156,6 +217,7 @@
           </form>
         </div>
       </div>
-    </section>
+      </section>
+    </div>
   </body>
 </html>

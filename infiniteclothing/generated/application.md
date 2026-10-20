@@ -55,16 +55,13 @@ Defined in [MITUserVerification](../design/concepts/MITUserVerification.md), lin
 
 #### Actions
 
-- `register(username: String, email: String, password: String) : returns (user: User, token: String)`
+- `register(username: String, email: String, password: String) : returns (user: User)`
   - Refuses `USERNAME_ALREADY_USED`: This username is already used. Choose a new one.
   - Refuses `NOT_MIT`: Your email is not an MIT email. Please use that email, otherwise you can not join Infinite Clothing.
   - Refuses `EMAIL_ALREADY_USED`: This email already has an account.
-- `confirm(token: String) : returns (user: User)`
-  - Refuses `INVALID_TOKEN`: This token is not associated with any account.
 - `authenticate(username: String, password: String) : returns (user: User)`
   - Refuses `NO_USERNAME_FOUND`: This username does not have an account.
   - Refuses `INCORRECT_PASSWORD`: Incorrect password. Please try again.
-  - Refuses `NOT_CONFIRMED`: Your account is not confirmed. Please confirm.
 
 #### Instances
 
@@ -258,8 +255,8 @@ Former "user associated with a session" — inputs (session); bindings (user); p
 ### Authenticate
 
 Authored path: `Authenticate`.
-- Covered by [MITUserVerification](../design/compositions/MITUserVerification.md), line 15.
-- Covered by [MITUserVerification](../design/compositions/MITUserVerification.md), line 18.
+- Covered by [MITUserVerification](../design/compositions/MITUserVerification.md), line 9.
+- Covered by [MITUserVerification](../design/compositions/MITUserVerification.md), line 12.
 
 ```reaction
 when RequestBoundary.request (password, path: "/users/authenticate", requestId, username)
@@ -270,8 +267,8 @@ then
 ### Authenticate#2
 
 Authored path: `Authenticate`.
-- Covered by [MITUserVerification](../design/compositions/MITUserVerification.md), line 15.
-- Covered by [MITUserVerification](../design/compositions/MITUserVerification.md), line 18.
+- Covered by [MITUserVerification](../design/compositions/MITUserVerification.md), line 9.
+- Covered by [MITUserVerification](../design/compositions/MITUserVerification.md), line 12.
 
 ```reaction
 when MITUserVerification.authenticate (password, username, user), asked by Authenticate
@@ -381,32 +378,6 @@ where
   earlier, RequestBoundary.request (path: "/messaging/closeConversation", requestId, topic)
 then
   RequestBoundary.respond (requestId)
-```
-
-### Confirm
-
-Authored path: `Confirm`.
-- Covered by [MITUserVerification](../design/compositions/MITUserVerification.md), line 9.
-- Covered by [MITUserVerification](../design/compositions/MITUserVerification.md), line 12.
-
-```reaction
-when RequestBoundary.request (path: "/users/confirm", requestId, token)
-then
-  MITUserVerification.confirm (token)
-```
-
-### Confirm#2
-
-Authored path: `Confirm`.
-- Covered by [MITUserVerification](../design/compositions/MITUserVerification.md), line 9.
-- Covered by [MITUserVerification](../design/compositions/MITUserVerification.md), line 12.
-
-```reaction
-when MITUserVerification.confirm (token, user), asked by Confirm
-where
-  earlier, RequestBoundary.request (path: "/users/confirm", requestId, token)
-then
-  RequestBoundary.respond (requestId, user)
 ```
 
 ### Conversation
@@ -626,11 +597,11 @@ Authored path: `Register`.
 - Covered by [MITUserVerification](../design/compositions/MITUserVerification.md), line 6.
 
 ```reaction
-when MITUserVerification.register (email, password, username, token, user), asked by Register
+when MITUserVerification.register (email, password, username, user), asked by Register
 where
   earlier, RequestBoundary.request (email, password, path: "/users/register", requestId, username)
 then
-  RequestBoundary.respond (requestId, token, user)
+  RequestBoundary.respond (requestId, user)
 ```
 
 ### ReleaseClaim
@@ -867,5 +838,4 @@ not listed here have no explicit input contract.
 - `/tagging/tag` — requires `item`, `tag`
 - `/tagging/untag` — requires `item`, `tag`
 - `/users/authenticate` — requires `username`, `password`
-- `/users/confirm` — requires `token`
 - `/users/register` — requires `username`, `email`, `password`

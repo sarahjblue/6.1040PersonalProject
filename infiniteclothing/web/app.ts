@@ -32,6 +32,28 @@ type Message = {
   readStatus: "UNREAD" | "READ";
 };
 
+type AuthUser = {
+  username: string;
+  email: string;
+};
+
+type AuthSession = {
+  id: string;
+  user: AuthUser;
+};
+
+const authPanel = document.querySelector<HTMLElement>("#auth-panel");
+const authStatus = document.querySelector<HTMLParagraphElement>("#auth-status");
+const authenticatedApp =
+  document.querySelector<HTMLDivElement>("#authenticated-app");
+const signedInUser =
+  document.querySelector<HTMLElement>("#signed-in-user");
+const loginForm = document.querySelector<HTMLFormElement>("#login-form");
+const registerForm = document.querySelector<HTMLFormElement>("#register-form");
+const logoutButton =
+  document.querySelector<HTMLButtonElement>("#logout-button");
+const sellerInput =
+  document.querySelector<HTMLInputElement>('#item-form input[name="seller"]');
 const form = document.querySelector<HTMLFormElement>("#item-form");
 const statusMessage = document.querySelector<HTMLParagraphElement>("#status");
 const inventoryContainer = document.querySelector<HTMLDivElement>("#inventory");
@@ -76,6 +98,14 @@ const refreshMessagesButton =
   document.querySelector<HTMLButtonElement>("#refresh-messages");
 
 if (
+  !authPanel ||
+  !authStatus ||
+  !authenticatedApp ||
+  !signedInUser ||
+  !loginForm ||
+  !registerForm ||
+  !logoutButton ||
+  !sellerInput ||
   !form ||
   !statusMessage ||
   !inventoryContainer ||
@@ -106,6 +136,7 @@ if (
 }
 
 const items: Item[] = [];
+const SESSION_STORAGE_KEY = "infinite-clothing-session";
 let tagDefinitions: TagDefinition[] = [];
 let visibleItemIds: Set<number> | undefined;
 let conversations: Conversation[] = [];
@@ -131,6 +162,180 @@ function setMessagesOpen(open: boolean) {
     }
   } else {
     messagesLauncher.focus();
+  }
+}
+
+function extractAuthUser(data: unknown): AuthUser | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  const value = data as Record<string, unknown>;
+  if (
+    typeof value.username === "string" &&
+    typeof value.email === "string"
+  ) {
+    return { username: value.username, email: value.email };
+  }
+
+  for (const key of ["user", "result", "users"]) {
+    const found = extractAuthUser(value[key]);
+    if (found) return found;
+  }
+  if (Array.isArray(data)) {
+    for (const entry of data) {
+      const found = extractAuthUser(entry);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
+function extractAuthSession(data: unknown): AuthSession | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  const value = data as Record<string, unknown>;
+  if (typeof value.id === "string") {
+    const user = extractAuthUser(value.user);
+    return user ? { id: value.id, user } : undefined;
+  }
+  return extractAuthSession(value.session) ?? extractAuthSession(value.result);
+}
+
+function setAuthenticatedUser(session: AuthSession) {
+  if (
+    !currentUserInput ||
+    !sellerInput ||
+    !signedInUser ||
+    !authPanel ||
+    !authenticatedApp
+  ) {
+    throw new Error("Missing account controls.");
+  }
+  currentUserInput.value = session.user.username;
+  sellerInput.value = session.user.username;
+  signedInUser.textContent = session.user.username;
+  authPanel.hidden = true;
+  authenticatedApp.hidden = false;
+}
+
+function clearAuthenticatedUser() {
+  if (
+    !currentUserInput ||
+    !sellerInput ||
+    !signedInUser ||
+    !messagesPanel ||
+    !messagesLauncher ||
+    !conversationList ||
+    !messageList ||
+    !threadTitle ||
+    !sendMessageButton ||
+    !replyContentInput ||
+    !authenticatedApp ||
+    !authPanel
+  ) {
+    throw new Error("Missing account controls.");
+  }
+  selectedConversation = undefined;
+  conversations = [];
+  items.length = 0;
+  conversationList.replaceChildren();
+  messageList.replaceChildren();
+  threadTitle.textContent = "Select a conversation";
+  sendMessageButton.disabled = true;
+  replyContentInput.value = "";
+  replyContentInput.disabled = true;
+  currentUserInput.value = "";
+  sellerInput.value = "";
+  signedInUser.textContent = "";
+  messagesPanel.hidden = true;
+  messagesLauncher.setAttribute("aria-expanded", "false");
+  authenticatedApp.hidden = true;
+  authPanel.hidden = false;
+  renderInventory();
+}
+
+async function authError(response: Response): Promise<string> {
+  const detail = await readError(response);
+  switch (response.status) {
+    case 400:
+      return "Use a valid MIT email address ending in @mit.edu.";
+    case 401:
+      return "The username or password is incorrect.";
+    case 403:
+      return "Sign-in was not allowed.";
+    case 409:
+      return "That username or email is already in use.";
+    default:
+      return detail;
+  }
+}
+
+async function loadAuthenticatedData() {
+  await loadTagDefinitions();
+  await fetchInventory();
+  await loadConversations();
+}
+
+async function restoreSession() {
+  if (!authStatus) return;
+  let stored: string | null;
+  try {
+    stored = localStorage.getItem(SESSION_STORAGE_KEY);
+  } catch (error) {
+    authStatus.textContent =
+      error instanceof Error
+        ? `Could not access saved sign-in: ${error.message}`
+        : "Could not access saved sign-in.";
+    return;
+  }
+  if (!stored) return;
+
+  let session: AuthSession | undefined;
+  try {
+    session = extractAuthSession(JSON.parse(stored));
+  } catch {
+    session = undefined;
+  }
+  if (!session) {
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+    authStatus.textContent = "Your saved sign-in was invalid. Please sign in.";
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/sessioning/user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session }),
+    });
+    if (!response.ok) {
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+      authStatus.textContent = "Your session expired. Please sign in again.";
+      return;
+    }
+    const user = extractAuthUser(await response.json());
+    if (
+      !user ||
+      user.username !== session.user.username ||
+      user.email !== session.user.email
+    ) {
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+      authStatus.textContent = "Your saved sign-in was invalid. Please sign in.";
+      return;
+    }
+
+    setAuthenticatedUser({ id: session.id, user });
+    authStatus.textContent = "";
+    void loadAuthenticatedData().catch((error: unknown) => {
+      if (statusMessage) {
+        statusMessage.textContent =
+          error instanceof Error
+            ? error.message
+            : "Could not load the marketplace.";
+      }
+    });
+  } catch (error) {
+    authStatus.textContent =
+      error instanceof Error
+        ? `Could not restore your session: ${error.message}`
+        : "Could not restore your session.";
   }
 }
 
@@ -1189,6 +1394,114 @@ async function deleteItem(item: Item, button: HTMLButtonElement) {
   }
 }
 
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const values = new FormData(loginForm);
+  const username = String(values.get("username") ?? "").trim();
+  const password = String(values.get("password") ?? "");
+  const button = loginForm.querySelector<HTMLButtonElement>(
+    'button[type="submit"]',
+  );
+  if (!button) throw new Error("Missing sign-in button.");
+
+  button.disabled = true;
+  authStatus.textContent = "Signing in…";
+  try {
+    const response = await fetch("/api/users/authenticate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!response.ok) throw new Error(await authError(response));
+
+    const user = extractAuthUser(await response.json());
+    if (!user || user.username !== username) {
+      throw new Error("Unexpected sign-in response.");
+    }
+
+    const sessionResponse = await fetch("/api/sessioning/sessionOpen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user }),
+    });
+    if (!sessionResponse.ok) {
+      throw new Error(await readError(sessionResponse));
+    }
+    const session = extractAuthSession(await sessionResponse.json());
+    if (!session || session.user.username !== user.username) {
+      throw new Error("Unexpected session response.");
+    }
+
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+    setAuthenticatedUser(session);
+    loginForm.reset();
+    authStatus.textContent = "";
+    void loadAuthenticatedData().catch((error: unknown) => {
+      statusMessage.textContent =
+        error instanceof Error ? error.message : "Could not load the marketplace.";
+    });
+  } catch (error) {
+    authStatus.textContent =
+      error instanceof Error ? error.message : "Could not sign in.";
+  } finally {
+    button.disabled = false;
+  }
+});
+
+registerForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const values = new FormData(registerForm);
+  const username = String(values.get("username") ?? "").trim();
+  const email = String(values.get("email") ?? "").trim();
+  const password = String(values.get("password") ?? "");
+  const button = registerForm.querySelector<HTMLButtonElement>(
+    'button[type="submit"]',
+  );
+  if (!button) throw new Error("Missing registration button.");
+
+  button.disabled = true;
+  authStatus.textContent = "Creating account…";
+  try {
+    const response = await fetch("/api/users/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, email, password }),
+    });
+    if (!response.ok) throw new Error(await authError(response));
+
+    const user = extractAuthUser(await response.json());
+    if (!user || user.username !== username) {
+      throw new Error("Unexpected registration response.");
+    }
+    const loginUsername =
+      loginForm.querySelector<HTMLInputElement>('input[name="username"]');
+    if (loginUsername) loginUsername.value = username;
+    authStatus.textContent =
+      "Account created. You can now sign in with your username and password.";
+    loginForm.querySelector<HTMLInputElement>(
+      'input[name="password"]',
+    )?.focus();
+    registerForm.reset();
+  } catch (error) {
+    authStatus.textContent =
+      error instanceof Error ? error.message : "Could not create the account.";
+  } finally {
+    button.disabled = false;
+  }
+});
+
+logoutButton.addEventListener("click", () => {
+  try {
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+  } catch (error) {
+    authStatus.textContent =
+      error instanceof Error
+        ? `Could not clear the saved session: ${error.message}`
+        : "Could not clear the saved session.";
+  }
+  clearAuthenticatedUser();
+});
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -1396,16 +1709,4 @@ clearTagFilterButton.addEventListener("click", () => {
   statusMessage.textContent = "Showing all inventory.";
 });
 currentUserInput.addEventListener("input", renderInventory);
-currentUserInput.addEventListener("change", () => {
-  void fetchInventory();
-  void loadConversations();
-});
-void loadTagDefinitions()
-  .then(async () => {
-    await fetchInventory();
-    await loadConversations();
-  })
-  .catch((error: unknown) => {
-    statusMessage.textContent =
-      error instanceof Error ? error.message : "Could not load tags.";
-  });
+void restoreSession();

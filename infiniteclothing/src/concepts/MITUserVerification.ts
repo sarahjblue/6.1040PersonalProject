@@ -1,25 +1,22 @@
 import { db } from "../db.ts";
 
-export type Confirmation = "CONFIRMED" | "UNCONFIRMED";
-
 export type User = {
   username: string;
   email: string;
 };
 
+type Confirmation = "CONFIRMED" | "UNCONFIRMED";
+
 export class UsernameAlreadyUsed extends Error {}
 export class NotMIT extends Error {}
 export class EmailAlreadyUsed extends Error {}
-export class InvalidToken extends Error {}
 export class NoUsernameFound extends Error {}
 export class IncorrectPassword extends Error {}
-export class NotConfirmed extends Error {}
 
 type UserDocument = {
   username: string;
   email: string;
   passwordHash: string;
-  token?: string;
   confirmed: Confirmation;
 };
 
@@ -30,7 +27,6 @@ function ensureIndexes(): Promise<void> {
   indexesReady ??= Promise.all([
     users.createIndex({ username: 1 }, { unique: true }),
     users.createIndex({ email: 1 }, { unique: true }),
-    users.createIndex({ token: 1 }, { sparse: true, unique: true }),
   ]).then(() => undefined).catch((error: unknown) => {
     indexesReady = undefined;
     throw error;
@@ -43,7 +39,7 @@ function publicUser(user: UserDocument): User {
 }
 
 export class MITUserVerificationConcept {
-  async register({username, email, password}: {username: string, email: string, password: string}): Promise<{user: User, token: string}> {
+  async register({username, email, password}: {username: string, email: string, password: string}): Promise<{user: User}> {
     await ensureIndexes();
 
     if (await users.findOne({ username })) {
@@ -56,13 +52,11 @@ export class MITUserVerificationConcept {
       throw new EmailAlreadyUsed("EMAIL_ALREADY_USED: This email already has an account.");
     }
 
-    const token = crypto.randomUUID();
     const user: UserDocument = {
       username,
       email,
       passwordHash: await Bun.password.hash(password),
-      token,
-      confirmed: "UNCONFIRMED",
+      confirmed: "CONFIRMED",
     };
 
     try {
@@ -74,19 +68,6 @@ export class MITUserVerificationConcept {
       throw error;
     }
 
-    return { user: publicUser(user), token };
-  }
-
-  async confirm({token}: {token: string}): Promise<{user:User}> {
-    await ensureIndexes();
-
-    const user = await users.findOneAndUpdate(
-      { token, confirmed: "UNCONFIRMED" },
-      { $set: { confirmed: "CONFIRMED" }, $unset: { token: "" } },
-      { returnDocument: "after" },
-    );
-
-    if (!user) throw new InvalidToken("Invalid or already-used confirmation token.");
     return { user: publicUser(user) };
   }
 
@@ -94,9 +75,7 @@ export class MITUserVerificationConcept {
     await ensureIndexes();
 
     const user = await users.findOne({ username });
-    if (!user || user.confirmed !== "CONFIRMED") {
-      throw new NotConfirmed("Invalid credentials or account is not confirmed.");
-    }
+    if (!user) throw new NoUsernameFound("NO_USERNAME_FOUND: This username does not have an account.");
 
     const valid = await Bun.password.verify(password, user.passwordHash);
     if (!valid) throw new IncorrectPassword("Invalid credentials.");

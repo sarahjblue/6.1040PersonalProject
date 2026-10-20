@@ -5,23 +5,14 @@ const { MITUserVerification } = concepts;
 
 const Register = endpoint(
   "/users/register",
-  ({ username, email, password, user, token }) =>
+  ({ username, email, password, user }) =>
     receive({ username, email, password })
       .then(
         MITUserVerification.register({ username, email, password })
-          .responds({ user, token }),
+          .responds({ user }),
       )
-      .then(respond({ user, token })),
-  { input: { required: ["username", "email", "password"] } },
-);
-
-const Confirm = endpoint(
-  "/users/confirm",
-  ({ token, user }) =>
-    receive({ token })
-      .then(MITUserVerification.confirm({ token }).responds({ user }))
       .then(respond({ user })),
-  { input: { required: ["token"] } },
+  { input: { required: ["username", "email", "password"] } },
 );
 
 const Authenticate = endpoint(
@@ -36,4 +27,4 @@ const Authenticate = endpoint(
   { input: { required: ["username", "password"] } },
 );
 
-export const composition = { Register, Confirm, Authenticate };
+export const composition = { Register, Authenticate };

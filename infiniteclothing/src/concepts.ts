@@ -50,10 +50,8 @@ import{
     UsernameAlreadyUsed,
     NotMIT,
     EmailAlreadyUsed,
-    InvalidToken,
     NoUsernameFound,
     IncorrectPassword,
-    NotConfirmed
 } from "./concepts/MITUserVerification.ts";
 
 const inventory = registerConcept({
@@ -100,10 +98,8 @@ const mitUserVerification = registerConcept({
     USERNAME_ALREADY_USED: UsernameAlreadyUsed,
     NOT_MIT: NotMIT,
     EMAIL_ALREADY_USED: EmailAlreadyUsed,
-    INVALID_TOKEN: InvalidToken,
     NO_USERNAME_FOUND: NoUsernameFound,
-    INCORRECT_PASSWORD: IncorrectPassword,
-    NOT_CONFIRMED: NotConfirmed
+    INCORRECT_PASSWORD: IncorrectPassword
   }
 
 });

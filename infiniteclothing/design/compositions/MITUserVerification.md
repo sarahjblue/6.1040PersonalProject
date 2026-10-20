@@ -6,12 +6,6 @@ A person [registers an account](reaction:Register)
 Register at /users/register
 ```
 
-A person [confirms their account](reaction:Confirm)
-
-```endpoints
-Confirm at /users/confirm
-```
-
 A person [logs in](reaction:Authenticate)
 
 ```endpoints

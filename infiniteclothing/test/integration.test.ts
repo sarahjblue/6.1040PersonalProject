@@ -26,9 +26,7 @@ import {
 } from "../src/concepts/Messaging.ts";
 import {
   IncorrectPassword,
-  InvalidToken,
   MITUserVerificationConcept,
-  NotConfirmed,
   NotMIT,
   UsernameAlreadyUsed,
 } from "../src/concepts/MITUserVerification.ts";
@@ -318,7 +316,7 @@ describe("messaging", () => {
 });
 
 describe("account verification and sessions", () => {
-  test("registers MIT users, requires confirmation, and verifies credentials", async () => {
+  test("registers MIT users as active accounts and verifies credentials", async () => {
     const username = `${testPrefix}-account`;
     const email = `${testPrefix}@mit.edu`;
     usernames.push(username);
@@ -337,9 +335,15 @@ describe("account verification and sessions", () => {
       password: "correct horse battery staple",
     });
     expect(registration.user).toEqual({ username, email });
-    await expect(
-      users.authenticate({ username, password: "correct horse battery staple" }),
-    ).rejects.toBeInstanceOf(NotConfirmed);
+    expect(registration).not.toHaveProperty("token");
+    const storedAccount = await db.collection("users").findOne({ username });
+    expect(storedAccount?.confirmed).toBe("CONFIRMED");
+    expect(
+      (await users.authenticate({
+        username,
+        password: "correct horse battery staple",
+      })).user,
+    ).toEqual({ username, email });
 
     await expect(
       users.register({
@@ -349,11 +353,6 @@ describe("account verification and sessions", () => {
       }),
     ).rejects.toBeInstanceOf(UsernameAlreadyUsed);
 
-    const confirmed = await users.confirm({ token: registration.token });
-    expect(confirmed.user.username).toBe(username);
-    await expect(
-      users.confirm({ token: registration.token }),
-    ).rejects.toBeInstanceOf(InvalidToken);
     await expect(
       users.authenticate({ username, password: "wrong password" }),
     ).rejects.toBeInstanceOf(IncorrectPassword);
@@ -392,13 +391,12 @@ describe("HTTP compositions", () => {
       password: "test seller password",
     });
     expect(sellerRegistration.response.status).toBe(200);
-    const sellerToken = (
-      sellerRegistration.data as { token: string }
-    ).token;
-    const sellerConfirmation = await requestJson("/api/users/confirm", {
-      token: sellerToken,
+    expect(sellerRegistration.data).not.toHaveProperty("token");
+    const sellerLogin = await requestJson("/api/users/authenticate", {
+      username: sellerName,
+      password: "test seller password",
     });
-    expect(sellerConfirmation.response.status).toBe(200);
+    expect(sellerLogin.response.status).toBe(200);
 
     const buyerRegistration = await requestJson("/api/users/register", {
       username: buyerName,
@@ -406,11 +404,12 @@ describe("HTTP compositions", () => {
       password: "test buyer password",
     });
     expect(buyerRegistration.response.status).toBe(200);
-    const buyerToken = (buyerRegistration.data as { token: string }).token;
-    const buyerConfirmation = await requestJson("/api/users/confirm", {
-      token: buyerToken,
+    expect(buyerRegistration.data).not.toHaveProperty("token");
+    const buyerLogin = await requestJson("/api/users/authenticate", {
+      username: buyerName,
+      password: "test buyer password",
     });
-    expect(buyerConfirmation.response.status).toBe(200);
+    expect(buyerLogin.response.status).toBe(200);
 
     const sellerSession = await requestJson("/api/sessioning/sessionOpen", {
       user: { username: sellerName, email: sellerEmail },
