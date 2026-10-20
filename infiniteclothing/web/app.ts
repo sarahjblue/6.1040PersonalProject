@@ -46,6 +46,8 @@ const applyTagFilterButton =
   document.querySelector<HTMLButtonElement>("#apply-tag-filter");
 const clearTagFilterButton =
   document.querySelector<HTMLButtonElement>("#clear-tag-filter");
+const itemImageInput =
+  document.querySelector<HTMLInputElement>('#item-form input[name="image"]');
 const startConversationForm =
   document.querySelector<HTMLFormElement>("#start-conversation-form");
 const messageRecipientInput =
@@ -84,6 +86,7 @@ if (
   !colorFilterSelect ||
   !applyTagFilterButton ||
   !clearTagFilterButton ||
+  !itemImageInput ||
   !startConversationForm ||
   !messageRecipientInput ||
   !messageTopicInput ||
@@ -398,6 +401,21 @@ function renderInventory() {
     editButton.disabled = !currentUser || item.seller !== currentUser;
     editButton.addEventListener("click", () => void editItem(item));
 
+    const replaceImageButton = document.createElement("button");
+    replaceImageButton.type = "button";
+    replaceImageButton.textContent = "Upload new image";
+    replaceImageButton.disabled = !currentUser || item.seller !== currentUser;
+    const replaceImageInput = document.createElement("input");
+    replaceImageInput.type = "file";
+    replaceImageInput.accept = ".jpg,.jpeg,.png,image/jpeg,image/png";
+    replaceImageInput.hidden = true;
+    replaceImageInput.addEventListener("change", () => {
+      const file = replaceImageInput.files?.[0];
+      if (file) void replaceItemImage(item, file, replaceImageButton);
+      replaceImageInput.value = "";
+    });
+    replaceImageButton.addEventListener("click", () => replaceImageInput.click());
+
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
     deleteButton.textContent = "Delete";
@@ -451,6 +469,8 @@ function renderInventory() {
       releaseButton,
       completeButton,
       editButton,
+      replaceImageButton,
+      replaceImageInput,
       deleteButton,
     );
     card.append(image, title, details, description, tagsList, actions, tagEditor);
@@ -484,6 +504,50 @@ async function readError(response: Response): Promise<string> {
   } catch {
     return text;
   }
+}
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+
+async function readUploadedImage(file: File): Promise<string> {
+  if (file.size === 0 || file.size > MAX_IMAGE_SIZE) {
+    throw new Error("Choose a non-empty image that is 5 MB or smaller.");
+  }
+
+  const bytes = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+  const isPng =
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a;
+  const isJpeg =
+    bytes.length >= 3 &&
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8 &&
+    bytes[2] === 0xff;
+  if (!isPng && !isJpeg) {
+    throw new Error("Choose a valid JPEG or PNG image.");
+  }
+  const imageType = isPng ? "image/png" : "image/jpeg";
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      if (typeof reader.result !== "string") {
+        reject(new Error("Could not read the selected image."));
+        return;
+      }
+      resolve(reader.result.replace(/^data:[^;,]*/, `data:${imageType}`));
+    });
+    reader.addEventListener("error", () =>
+      reject(new Error("Could not read the selected image.")),
+    );
+    reader.readAsDataURL(new Blob([file], { type: imageType }));
+  });
 }
 
 async function fetchItemTags(item: Item): Promise<TagDefinition[]> {
@@ -1005,9 +1069,8 @@ async function completeTransaction(item: Item, button: HTMLButtonElement) {
 }
 
 async function editItem(item: Item) {
-    if(currentUserInput === null){
-        return {};
-    }
+  if (!currentUserInput || !statusMessage) return;
+
   const user = currentUserInput.value.trim();
   if (!user || item.id === undefined) return;
 
@@ -1017,29 +1080,66 @@ async function editItem(item: Item) {
   const price = window.prompt("Edit price:", item.price ?? "");
   if (price === null) return;
 
-  const image = window.prompt("Edit image URL:", item.image);
-  if (image === null) return;
-
   try {
     const response = await fetch("/api/inventory/edit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ item, user, description, price, image }),
+      body: JSON.stringify({
+        item,
+        user,
+        description,
+        price,
+        image: item.image,
+      }),
     });
 
     if (!response.ok) throw new Error(await readError(response));
 
-    if(statusMessage === null){
-        return {};
-    }
     statusMessage.textContent = "Item updated.";
     await fetchInventory();
   } catch (error) {
-    if(statusMessage === null){
-        return {};
-    }
     statusMessage.textContent =
       error instanceof Error ? error.message : "Could not edit item.";
+  }
+}
+
+async function replaceItemImage(
+  item: Item,
+  file: File,
+  button: HTMLButtonElement,
+) {
+  if (!currentUserInput || !statusMessage) return;
+
+  const user = currentUserInput.value.trim();
+  if (!user || item.id === undefined) {
+    statusMessage.textContent =
+      "Enter your username before replacing an item image.";
+    currentUserInput.focus();
+    return;
+  }
+
+  button.disabled = true;
+  try {
+    const image = await readUploadedImage(file);
+    const response = await fetch("/api/inventory/edit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        item,
+        user,
+        description: item.description ?? "",
+        price: item.price ?? "",
+        image,
+      }),
+    });
+    if (!response.ok) throw new Error(await readError(response));
+
+    statusMessage.textContent = "Item image updated.";
+    await fetchInventory();
+  } catch (error) {
+    statusMessage.textContent =
+      error instanceof Error ? error.message : "Could not update the item image.";
+    button.disabled = false;
   }
 }
 
@@ -1093,10 +1193,16 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const formData = new FormData(form);
+  const imageFile = formData.get("image");
+  if (!(imageFile instanceof File) || imageFile.size === 0) {
+    statusMessage.textContent = "Choose a JPEG or PNG image to post.";
+    itemImageInput.focus();
+    return;
+  }
+
   const payload = {
     name: String(formData.get("name") ?? "").trim(),
     seller: String(formData.get("seller") ?? "").trim(),
-    image: String(formData.get("image") ?? "").trim(),
     description: String(formData.get("description") ?? "").trim(),
     price: String(formData.get("price") ?? "").trim(),
   };
@@ -1105,10 +1211,11 @@ form.addEventListener("submit", async (event) => {
   );
 
   try {
+    const image = await readUploadedImage(imageFile);
     const response = await fetch("/api/inventory/post", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, image }),
     });
 
     if (!response.ok) throw new Error(await readError(response));

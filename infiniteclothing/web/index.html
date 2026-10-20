@@ -34,8 +34,13 @@
           </label>
 
           <label>
-            Image URL
-            <input name="image" type="url" placeholder="https://..." required />
+            Item image (JPEG or PNG, up to 5 MB)
+            <input
+              name="image"
+              type="file"
+              accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+              required
+            />
           </label>
 
           <fieldset class="tag-fields">
