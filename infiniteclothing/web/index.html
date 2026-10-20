@@ -96,11 +96,16 @@
     >
       <header class="messaging-header">
         <h2>Messages</h2>
-        <button id="close-messages" class="messages-close" type="button" aria-label="Close messages">
-          ×
-        </button>
+        <div class="messaging-actions">
+          <button id="refresh-messages" type="button">Refresh</button>
+          <button id="close-messages" class="messages-close" type="button" aria-label="Close messages">
+            ×
+          </button>
+        </div>
       </header>
-      <form id="start-conversation-form" class="message-compose">
+      <details class="start-conversation">
+        <summary>Start a new conversation</summary>
+        <form id="start-conversation-form" class="message-compose">
             <label>
               Message seller
               <input
@@ -119,7 +124,8 @@
               <textarea id="initial-message" rows="2" required></textarea>
             </label>
             <button type="submit">Start conversation</button>
-      </form>
+        </form>
+      </details>
       <div class="message-layout">
         <div>
           <h3>Your conversations</h3>
@@ -131,10 +137,16 @@
           <form id="send-message-form" class="message-compose">
                 <label>
                   Reply
-                  <textarea id="reply-content" rows="2" required></textarea>
+                  <textarea
+                    id="reply-content"
+                    rows="2"
+                    placeholder="Select a conversation to reply"
+                    disabled
+                    required
+                  ></textarea>
                 </label>
                 <button id="send-message-button" type="submit" disabled>
-                  Send message
+                  Send reply
                 </button>
           </form>
         </div>

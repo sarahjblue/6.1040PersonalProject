@@ -70,6 +70,8 @@ const messagesPanel =
   document.querySelector<HTMLElement>("#messages-panel");
 const closeMessagesButton =
   document.querySelector<HTMLButtonElement>("#close-messages");
+const refreshMessagesButton =
+  document.querySelector<HTMLButtonElement>("#refresh-messages");
 
 if (
   !form ||
@@ -94,7 +96,8 @@ if (
   !sendMessageButton ||
   !messagesLauncher ||
   !messagesPanel ||
-  !closeMessagesButton
+  !closeMessagesButton ||
+  !refreshMessagesButton
 ) {
   throw new Error("Missing frontend elements. Check the IDs in index.html.");
 }
@@ -106,12 +109,23 @@ let conversations: Conversation[] = [];
 let selectedConversation: Conversation | undefined;
 
 function setMessagesOpen(open: boolean) {
-  if (!messagesPanel || !messagesLauncher || !messageRecipientInput) return;
+  if (
+    !messagesPanel ||
+    !messagesLauncher ||
+    !messageRecipientInput ||
+    !replyContentInput
+  ) {
+    return;
+  }
 
   messagesPanel.hidden = !open;
   messagesLauncher.setAttribute("aria-expanded", String(open));
   if (open) {
-    messageRecipientInput.focus();
+    if (selectedConversation) {
+      replyContentInput.focus();
+    } else {
+      messageRecipientInput.focus();
+    }
   } else {
     messagesLauncher.focus();
   }
@@ -531,7 +545,8 @@ async function loadConversations() {
     !conversationList ||
     !messageList ||
     !threadTitle ||
-    !sendMessageButton
+    !sendMessageButton ||
+    !replyContentInput
   ) {
     return;
   }
@@ -543,6 +558,7 @@ async function loadConversations() {
     messageList.replaceChildren();
     threadTitle.textContent = "Select a conversation";
     sendMessageButton.disabled = true;
+    replyContentInput.disabled = true;
     renderConversations();
     return;
   }
@@ -571,6 +587,7 @@ async function loadConversations() {
       messageList.replaceChildren();
       threadTitle.textContent = "Select a conversation";
       sendMessageButton.disabled = true;
+      replyContentInput.disabled = true;
     }
   } catch (error) {
     statusMessage.textContent =
@@ -584,14 +601,19 @@ async function loadMessages(conversation: Conversation, markRead: boolean) {
     !currentUserInput ||
     !sendMessageButton ||
     !threadTitle ||
-    !messageList
+    !messageList ||
+    !replyContentInput
   ) {
     return;
   }
   const reader = currentUserInput.value.trim();
   selectedConversation = conversation;
   renderConversations();
-  sendMessageButton.disabled = conversation.closedAt !== undefined;
+  const canReply =
+    conversation.closedAt === undefined &&
+    (conversation.initiator === reader || conversation.recipient === reader);
+  sendMessageButton.disabled = !canReply;
+  replyContentInput.disabled = !canReply;
 
   const otherUser =
     conversation.initiator === reader
@@ -1205,6 +1227,11 @@ sendMessageForm.addEventListener("submit", async (event) => {
       "Select an open conversation before replying.";
     return;
   }
+  if (conversation.initiator !== sender && conversation.recipient !== sender) {
+    statusMessage.textContent =
+      "Your username is not a participant in this conversation.";
+    return;
+  }
   if (!sender || !content) {
     statusMessage.textContent = "Enter your username and a message.";
     return;
@@ -1230,14 +1257,23 @@ sendMessageForm.addEventListener("submit", async (event) => {
     statusMessage.textContent =
       error instanceof Error ? error.message : "Could not send the message.";
   } finally {
-    sendMessageButton.disabled = conversation.closedAt !== undefined;
+    const user = currentUserInput.value.trim();
+    const isMember =
+      conversation.initiator === user || conversation.recipient === user;
+    sendMessageButton.disabled =
+      conversation.closedAt !== undefined || !isMember;
+    replyContentInput.disabled =
+      conversation.closedAt !== undefined || !isMember;
   }
 });
 
 messagesLauncher.addEventListener("click", () => {
-  setMessagesOpen(messagesPanel.hidden === true);
+  const open = messagesPanel.hidden === true;
+  setMessagesOpen(open);
+  if (open) void loadConversations();
 });
 closeMessagesButton.addEventListener("click", () => setMessagesOpen(false));
+refreshMessagesButton.addEventListener("click", () => void loadConversations());
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !messagesPanel.hidden) {
     setMessagesOpen(false);

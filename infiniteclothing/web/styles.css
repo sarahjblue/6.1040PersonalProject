@@ -167,6 +167,16 @@ button {
   gap: 1rem;
 }
 
+.messaging-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.messaging-actions button {
+  padding: 0.4rem 0.65rem;
+}
+
 .messaging-header h2 {
   margin: 0;
 }
@@ -182,6 +192,16 @@ button {
   display: grid;
   gap: 0.65rem;
   margin: 0.75rem 0;
+}
+
+.start-conversation > summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.start-conversation[open] {
+  max-height: 40vh;
+  overflow-y: auto;
 }
 
 .message-compose label {
@@ -217,6 +237,10 @@ button {
   grid-template-rows: auto minmax(100px, 1fr) auto;
   gap: 0.5rem;
   overflow: hidden;
+}
+
+.message-thread .message-compose {
+  margin: 0;
 }
 
 .conversation-list button {
