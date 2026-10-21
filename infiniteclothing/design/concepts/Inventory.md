@@ -121,6 +121,7 @@ delete(item: Item, user: User) : returns ()
 
     then
         remove item from Items.
+        close every conversation about item; its messages are removed 24 hours later.
         returns
 
 

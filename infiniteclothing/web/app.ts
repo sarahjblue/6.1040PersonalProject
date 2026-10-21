@@ -22,6 +22,8 @@ type Conversation = {
   initiator: string;
   recipient: string;
   closedAt?: number;
+  lastMessageAt: number;
+  unreadCount: number;
 };
 
 type Message = {
@@ -90,6 +92,8 @@ const sendMessageButton =
   document.querySelector<HTMLButtonElement>("#send-message-button");
 const messagesLauncher =
   document.querySelector<HTMLButtonElement>("#messages-launcher");
+const unreadMessageBadge =
+  document.querySelector<HTMLSpanElement>("#unread-message-badge");
 const messagesPanel =
   document.querySelector<HTMLElement>("#messages-panel");
 const closeMessagesButton =
@@ -128,6 +132,7 @@ if (
   !replyContentInput ||
   !sendMessageButton ||
   !messagesLauncher ||
+  !unreadMessageBadge ||
   !messagesPanel ||
   !closeMessagesButton ||
   !refreshMessagesButton
@@ -137,10 +142,14 @@ if (
 
 const items: Item[] = [];
 const SESSION_STORAGE_KEY = "infinite-clothing-session";
+const MESSAGE_RETENTION_MS = 24 * 60 * 60 * 1000;
+const CONVERSATION_REFRESH_MS = 60 * 1000;
 let tagDefinitions: TagDefinition[] = [];
 let visibleItemIds: Set<number> | undefined;
 let conversations: Conversation[] = [];
 let selectedConversation: Conversation | undefined;
+let conversationExpiryTimer: number | undefined;
+let conversationRefreshTimer: number | undefined;
 
 function setMessagesOpen(open: boolean) {
   if (
@@ -234,6 +243,15 @@ function clearAuthenticatedUser() {
   }
   selectedConversation = undefined;
   conversations = [];
+  if (conversationExpiryTimer !== undefined) {
+    window.clearTimeout(conversationExpiryTimer);
+    conversationExpiryTimer = undefined;
+  }
+  if (conversationRefreshTimer !== undefined) {
+    window.clearInterval(conversationRefreshTimer);
+    conversationRefreshTimer = undefined;
+  }
+  updateUnreadMessageBadge();
   items.length = 0;
   conversationList.replaceChildren();
   messageList.replaceChildren();
@@ -271,6 +289,18 @@ async function loadAuthenticatedData() {
   await loadTagDefinitions();
   await fetchInventory();
   await loadConversations();
+  if (conversationRefreshTimer !== undefined) {
+    window.clearInterval(conversationRefreshTimer);
+  }
+  conversationRefreshTimer = window.setInterval(() => {
+    if (
+      authenticatedApp &&
+      !authenticatedApp.hidden &&
+      document.visibilityState === "visible"
+    ) {
+      void loadConversations();
+    }
+  }, CONVERSATION_REFRESH_MS);
 }
 
 async function restoreSession() {
@@ -402,6 +432,8 @@ function extractConversations(data: unknown): Conversation[] | undefined {
       recipient: row.recipient,
       closedAt:
         typeof row.closedAt === "number" ? row.closedAt : undefined,
+      lastMessageAt: 0,
+      unreadCount: 0,
     });
   }
   return loaded;
@@ -552,26 +584,33 @@ function renderInventory() {
     const actions = document.createElement("div");
     actions.className = "card-actions";
 
+    const isCurrentSeller =
+      currentUser !== "" && item.seller === currentUser;
     const claimButton = document.createElement("button");
     claimButton.type = "button";
     claimButton.textContent = "Claim item";
-    claimButton.disabled =
-      item.id === undefined ||
-      !currentUser ||
-      item.seller === currentUser ||
-      item.status !== "AVAILABLE";
+    const canClaim =
+      currentUser !== "" &&
+      !isCurrentSeller &&
+      item.status === "AVAILABLE" &&
+      item.id !== undefined;
+    claimButton.hidden = !canClaim;
     const isClaimedByCurrentUser =
-      item.status === "CLAIMED" && item.buyer === currentUser;
+      currentUser !== "" &&
+      item.status === "CLAIMED" &&
+      item.buyer === currentUser;
     const isClaimedByCurrentSeller =
-      item.status === "CLAIMED" && item.seller === currentUser;
-    claimButton.hidden = isClaimedByCurrentUser;
+      isCurrentSeller && item.status === "CLAIMED";
     claimButton.addEventListener("click", () => void claimItem(item, claimButton));
 
     const messageSellerButton = document.createElement("button");
     messageSellerButton.type = "button";
     messageSellerButton.textContent = "Message seller";
     messageSellerButton.hidden =
-      !currentUser || item.seller === currentUser || item.status === "COMPLETED";
+      !currentUser ||
+      isCurrentSeller ||
+      item.status === "COMPLETED" ||
+      item.id === undefined;
     messageSellerButton.addEventListener("click", () => {
       messageRecipientInput.value = item.seller;
       messageTopicInput.value =
@@ -584,8 +623,8 @@ function renderInventory() {
     const releaseButton = document.createElement("button");
     releaseButton.type = "button";
     releaseButton.textContent = "Release claim";
-    releaseButton.hidden = !isClaimedByCurrentUser;
-    releaseButton.disabled = !isClaimedByCurrentUser || item.id === undefined;
+    releaseButton.hidden =
+      !isClaimedByCurrentUser || item.id === undefined;
     releaseButton.addEventListener("click", () =>
       void releaseClaim(item, releaseButton),
     );
@@ -593,8 +632,7 @@ function renderInventory() {
     const completeButton = document.createElement("button");
     completeButton.type = "button";
     completeButton.textContent = "Mark completed";
-    completeButton.hidden = !isClaimedByCurrentSeller;
-    completeButton.disabled =
+    completeButton.hidden =
       !isClaimedByCurrentSeller || item.id === undefined;
     completeButton.addEventListener("click", () =>
       void completeTransaction(item, completeButton),
@@ -603,13 +641,13 @@ function renderInventory() {
     const editButton = document.createElement("button");
     editButton.type = "button";
     editButton.textContent = "Edit";
-    editButton.disabled = !currentUser || item.seller !== currentUser;
+    editButton.hidden = !isCurrentSeller || item.id === undefined;
     editButton.addEventListener("click", () => void editItem(item));
 
     const replaceImageButton = document.createElement("button");
     replaceImageButton.type = "button";
     replaceImageButton.textContent = "Upload new image";
-    replaceImageButton.disabled = !currentUser || item.seller !== currentUser;
+    replaceImageButton.hidden = !isCurrentSeller || item.id === undefined;
     const replaceImageInput = document.createElement("input");
     replaceImageInput.type = "file";
     replaceImageInput.accept = ".jpg,.jpeg,.png,image/jpeg,image/png";
@@ -624,12 +662,15 @@ function renderInventory() {
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
     deleteButton.textContent = "Delete";
-    deleteButton.disabled = !currentUser || item.seller !== currentUser;
+    deleteButton.hidden =
+      !isCurrentSeller ||
+      item.id === undefined ||
+      item.status === "COMPLETED";
     deleteButton.addEventListener("click", () => void deleteItem(item, deleteButton));
 
     const tagEditor = document.createElement("details");
     tagEditor.className = "tag-editor";
-    tagEditor.hidden = !currentUser || item.seller !== currentUser;
+    tagEditor.hidden = !isCurrentSeller || item.id === undefined;
 
     const tagEditorSummary = document.createElement("summary");
     tagEditorSummary.textContent = "Edit tags";
@@ -773,16 +814,18 @@ async function fetchItemTags(item: Item): Promise<TagDefinition[]> {
 }
 
 function renderConversations() {
-  if (!conversationList || !currentUserInput) return;
+  if (!conversationList || !currentUserInput || !unreadMessageBadge) return;
   conversationList.replaceChildren();
   const user = currentUserInput.value.trim();
 
   if (!user) {
     conversationList.textContent = "Enter your username to view messages.";
+    updateUnreadMessageBadge();
     return;
   }
   if (!conversations.length) {
     conversationList.textContent = "No conversations yet.";
+    updateUnreadMessageBadge();
     return;
   }
 
@@ -793,18 +836,95 @@ function renderConversations() {
       conversation.initiator === user
         ? conversation.recipient
         : conversation.initiator;
-    button.textContent = `${otherUser} · Item ${conversation.topic}${
+    const itemName = getConversationItemName(conversation);
+    const label = document.createElement("span");
+    label.textContent = `${otherUser} · ${itemName}${
       conversation.closedAt === undefined ? "" : " · Closed"
     }`;
+    button.appendChild(label);
+    if (conversation.unreadCount > 0) {
+      const badge = document.createElement("span");
+      badge.className = "unread-badge";
+      badge.textContent = String(conversation.unreadCount);
+      badge.setAttribute(
+        "aria-label",
+        `${conversation.unreadCount} unread message${conversation.unreadCount === 1 ? "" : "s"}`,
+      );
+      button.appendChild(badge);
+    }
     button.setAttribute(
       "aria-current",
       selectedConversation?.conversation === conversation.conversation
         ? "true"
         : "false",
     );
+    if (conversation.unreadCount > 0) {
+      button.setAttribute(
+        "aria-label",
+        `${otherUser}, ${itemName}, ${conversation.unreadCount} unread message${conversation.unreadCount === 1 ? "" : "s"}`,
+      );
+    }
     button.addEventListener("click", () => void openConversation(conversation));
     conversationList.appendChild(button);
   }
+  updateUnreadMessageBadge();
+}
+
+function getConversationItemName(conversation: Conversation): string {
+  const itemId = Number(conversation.topic);
+  return (
+    items.find((item) => item.id === itemId)?.name ??
+    "Item name unavailable"
+  );
+}
+
+function updateUnreadMessageBadge() {
+  if (!unreadMessageBadge || !messagesLauncher) return;
+  const unreadCount = conversations.reduce(
+    (total, conversation) => total + conversation.unreadCount,
+    0,
+  );
+  unreadMessageBadge.hidden = unreadCount === 0;
+  unreadMessageBadge.textContent =
+    unreadCount > 99 ? "99+" : String(unreadCount);
+  messagesLauncher.setAttribute(
+    "aria-label",
+    unreadCount === 0
+      ? "Messages"
+      : `Messages, ${unreadCount} unread message${unreadCount === 1 ? "" : "s"}`,
+  );
+}
+
+function removeExpiredConversations() {
+  const now = Date.now();
+  const expiredIds = new Set(
+    conversations
+      .filter(
+        (conversation) =>
+          conversation.closedAt !== undefined &&
+          conversation.closedAt + MESSAGE_RETENTION_MS <= now,
+      )
+      .map((conversation) => conversation.conversation),
+  );
+  if (expiredIds.size === 0) return;
+
+  conversations = conversations.filter(
+    (conversation) => !expiredIds.has(conversation.conversation),
+  );
+  if (
+    selectedConversation &&
+    expiredIds.has(selectedConversation.conversation)
+  ) {
+    selectedConversation = undefined;
+    messageList?.replaceChildren();
+    if (threadTitle) threadTitle.textContent = "Select a conversation";
+    if (sendMessageButton) sendMessageButton.disabled = true;
+    if (replyContentInput) {
+      replyContentInput.value = "";
+      replyContentInput.disabled = true;
+    }
+  }
+  renderConversations();
 }
 
 async function loadConversations() {
@@ -819,6 +939,7 @@ async function loadConversations() {
   ) {
     return;
   }
+  removeExpiredConversations();
   const user = currentUserInput.value.trim();
   if (!user) {
     conversations = [];
@@ -842,6 +963,55 @@ async function loadConversations() {
 
     const loaded = extractConversations(await response.json());
     if (!loaded) throw new Error("Unexpected conversations response.");
+    await Promise.all(
+      loaded.map(async (conversation) => {
+        const messagesResponse = await fetch("/api/messaging/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation: conversation.conversation, reader: user }),
+        });
+        if (!messagesResponse.ok) {
+          throw new Error(await readError(messagesResponse));
+        }
+        const threadMessages = extractMessages(await messagesResponse.json());
+        if (!threadMessages) {
+          throw new Error("Unexpected messages response.");
+        }
+        conversation.lastMessageAt = threadMessages.reduce(
+          (latest, message) => Math.max(latest, message.sentAt),
+          0,
+        );
+        conversation.unreadCount = threadMessages.filter(
+          (message) =>
+            message.sender !== user && message.readStatus === "UNREAD",
+        ).length;
+      }),
+    );
+    loaded.sort(
+      (first, second) =>
+        second.lastMessageAt - first.lastMessageAt ||
+        second.conversation - first.conversation,
+    );
+    if (conversationExpiryTimer !== undefined) {
+      window.clearTimeout(conversationExpiryTimer);
+      conversationExpiryTimer = undefined;
+    }
+    const nextExpiry = loaded.reduce(
+      (earliest, conversation) =>
+        conversation.closedAt === undefined
+          ? earliest
+          : Math.min(earliest, conversation.closedAt + MESSAGE_RETENTION_MS),
+      Number.POSITIVE_INFINITY,
+    );
+    if (Number.isFinite(nextExpiry)) {
+      conversationExpiryTimer = window.setTimeout(
+        () => {
+          removeExpiredConversations();
+          void loadConversations();
+        },
+        Math.max(0, nextExpiry - Date.now()),
+      );
+    }
     conversations = loaded;
     selectedConversation = selectedConversation
       ? loaded.find(
@@ -856,6 +1026,7 @@ async function loadConversations() {
       messageList.replaceChildren();
       threadTitle.textContent = "Select a conversation";
       sendMessageButton.disabled = true;
+      replyContentInput.value = "";
       replyContentInput.disabled = true;
     }
   } catch (error) {
@@ -875,6 +1046,14 @@ async function loadMessages(conversation: Conversation, markRead: boolean) {
   ) {
     return;
   }
+  if (
+    conversation.closedAt !== undefined &&
+    conversation.closedAt + MESSAGE_RETENTION_MS <= Date.now()
+  ) {
+    removeExpiredConversations();
+    void loadConversations();
+    return;
+  }
   const reader = currentUserInput.value.trim();
   selectedConversation = conversation;
   renderConversations();
@@ -888,7 +1067,7 @@ async function loadMessages(conversation: Conversation, markRead: boolean) {
     conversation.initiator === reader
       ? conversation.recipient
       : conversation.initiator;
-  threadTitle.textContent = `Conversation with ${otherUser} · Item ${conversation.topic}${
+  threadTitle.textContent = `Conversation with ${otherUser} · ${getConversationItemName(conversation)}${
     conversation.closedAt === undefined ? "" : " · Closed"
   }`;
 
@@ -903,6 +1082,8 @@ async function loadMessages(conversation: Conversation, markRead: boolean) {
         }),
       });
       if (!readResponse.ok) throw new Error(await readError(readResponse));
+      conversation.unreadCount = 0;
+      renderConversations();
     }
 
     const response = await fetch("/api/messaging/messages", {
@@ -1385,6 +1566,7 @@ async function deleteItem(item: Item, button: HTMLButtonElement) {
     const index = items.findIndex((candidate) => candidate.id === item.id);
     if (index !== -1) items.splice(index, 1);
 
+    await loadConversations();
     statusMessage.textContent = "Item deleted successfully.";
     renderInventory();
   } catch (error) {
@@ -1672,7 +1854,7 @@ sendMessageForm.addEventListener("submit", async (event) => {
 
     replyContentInput.value = "";
     statusMessage.textContent = "Message sent.";
-    await loadMessages(conversation, false);
+    await loadConversations();
   } catch (error) {
     statusMessage.textContent =
       error instanceof Error ? error.message : "Could not send the message.";
@@ -1694,6 +1876,15 @@ messagesLauncher.addEventListener("click", () => {
 });
 closeMessagesButton.addEventListener("click", () => setMessagesOpen(false));
 refreshMessagesButton.addEventListener("click", () => void loadConversations());
+document.addEventListener("visibilitychange", () => {
+  if (
+    document.visibilityState === "visible" &&
+    authenticatedApp &&
+    !authenticatedApp.hidden
+  ) {
+    void loadConversations();
+  }
+});
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !messagesPanel.hidden) {
     setMessagesOpen(false);

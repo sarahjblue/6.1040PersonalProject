@@ -81,7 +81,7 @@
 
           <label>
             Item name
-            <input name="name" type="text" placeholder="Used desk lamp" required />
+            <input name="name" type="text" placeholder="Give the item a name" required />
           </label>
 
           <label>
@@ -91,7 +91,7 @@
 
           <label>
             Price
-            <input name="price" type="text" placeholder="$25" required />
+            <input name="price" type="text" placeholder="$5" required />
           </label>
 
           <label>
@@ -153,6 +153,12 @@
         aria-controls="messages-panel"
       >
         Messages
+        <span
+          id="unread-message-badge"
+          class="unread-badge launcher-unread-badge"
+          aria-hidden="true"
+          hidden
+        ></span>
       </button>
       <section
         id="messages-panel"

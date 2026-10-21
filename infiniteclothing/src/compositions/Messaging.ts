@@ -23,9 +23,11 @@ const ConversationList = former(
 const Conversation = endpoint(
   "/messaging/conversations",
   ({ user }) =>
-    receive({ user }).then(
-      respond({ result: ConversationList({ user }) }),
-    ),
+    receive({ user })
+      .then(Messaging.purgeClosed({}))
+      .then(
+        respond({ result: ConversationList({ user }) }),
+      ),
   { input: { required: ["user"] } },
 );
 
@@ -78,9 +80,11 @@ const MessageList = former(
 const Messages = endpoint(
   "/messaging/messages",
   ({ conversation, reader }) =>
-    receive({ conversation, reader }).then(
-      respond({ result: MessageList({ conversation, reader }) }),
-    ),
+    receive({ conversation, reader })
+      .then(Messaging.purgeClosed({}))
+      .then(
+        respond({ result: MessageList({ conversation, reader }) }),
+      ),
   { input: { required: ["conversation", "reader"] } },
 );
 

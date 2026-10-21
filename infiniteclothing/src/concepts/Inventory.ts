@@ -1,4 +1,5 @@
 import {db, nextId} from "../db.ts";
+import { closeConversationsForTopic } from "./Messaging.ts";
 
 type Status = "AVAILABLE" | "CLAIMED" | "COMPLETED";
 
@@ -120,6 +121,7 @@ export class InventoryConcept{
         }
 
         await items.deleteOne({id: item.id});
+        await closeConversationsForTopic(String(item.id));
         return {};
     }
 

@@ -389,6 +389,20 @@ Authored path: `Conversation`.
 ```reaction
 when RequestBoundary.request (path: "/messaging/conversations", requestId, user)
 then
+  Messaging.purgeClosed ()
+```
+
+### Conversation#2
+
+Authored path: `Conversation`.
+- Covered by [Messaging](../design/compositions/Messaging.md), line 27.
+- Covered by [Messaging](../design/compositions/Messaging.md), line 30.
+
+```reaction
+when Messaging.purgeClosed (), asked by Conversation
+where
+  earlier, RequestBoundary.request (path: "/messaging/conversations", requestId, user)
+then
   RequestBoundary.respond (requestId, result: former "conversations for a user" with (user))
 ```
 
@@ -522,6 +536,20 @@ Authored path: `Messages`.
 
 ```reaction
 when RequestBoundary.request (conversation, path: "/messaging/messages", reader, requestId)
+then
+  Messaging.purgeClosed ()
+```
+
+### Messages#2
+
+Authored path: `Messages`.
+- Covered by [Messaging](../design/compositions/Messaging.md), line 21.
+- Covered by [Messaging](../design/compositions/Messaging.md), line 24.
+
+```reaction
+when Messaging.purgeClosed (), asked by Messages
+where
+  earlier, RequestBoundary.request (conversation, path: "/messaging/messages", reader, requestId)
 then
   RequestBoundary.respond (requestId, result: former "messages in a conversation" with (conversation, reader))
 ```

@@ -7,6 +7,7 @@ import {
   ItemNotAvailableToClaim,
   NoEditChanges,
   NotSellerComplete,
+  NotSellerDelete,
   NotSellerEdit,
   SellerCannotClaim,
 } from "../src/concepts/Inventory.ts";
@@ -22,7 +23,6 @@ import {
   MessagingConcept,
   NotConversationMember,
   SelfMessage,
-  UnknownConversation,
 } from "../src/concepts/Messaging.ts";
 import {
   IncorrectPassword,
@@ -187,6 +187,106 @@ describe("inventory", () => {
     ).toBe(false);
   });
 
+  test("deleting an item closes its conversations and purges them after 24 hours", async () => {
+    const seller = `${testPrefix}-cascade-owner`;
+    const buyer = `${testPrefix}-cascade-buyer`;
+    const item = await postItem(`${testPrefix}-cascade-delete`, seller);
+    const unrelatedTopic = `${testPrefix}-unrelated-topic`;
+
+    const related = await messaging.startConversation({
+      initiator: buyer,
+      recipient: seller,
+      topic: String(item.id),
+      content: "Is this available?",
+    });
+    conversationIds.push(related.conversation);
+    await messaging.sendMessage({
+      conversation: related.conversation,
+      sender: seller,
+      content: "Yes.",
+    });
+
+    const relatedSecond = await messaging.startConversation({
+      initiator: `${testPrefix}-second-buyer`,
+      recipient: seller,
+      topic: String(item.id),
+      content: "Can I claim this?",
+    });
+    conversationIds.push(relatedSecond.conversation);
+
+    const unrelated = await messaging.startConversation({
+      initiator: buyer,
+      recipient: seller,
+      topic: unrelatedTopic,
+      content: "Unrelated item question",
+    });
+    conversationIds.push(unrelated.conversation);
+
+    await expect(
+      inventory.delete({ item, user: `${testPrefix}-stranger` }),
+    ).rejects.toBeInstanceOf(NotSellerDelete);
+    for (const conversation of [related.conversation, relatedSecond.conversation]) {
+      expect(await db.collection("conversations").findOne({ id: conversation }))
+        .not.toBeNull();
+      expect(await db.collection("messages").countDocuments({ conversation }))
+        .toBe(conversation === related.conversation ? 2 : 1);
+    }
+
+    const deletion = await requestJson("/api/inventory/delete", {
+      item,
+      user: seller,
+    });
+    expect(deletion.response.status).toBe(200);
+
+    for (const conversation of [related.conversation, relatedSecond.conversation]) {
+      const closed = await db.collection("conversations").findOne({ id: conversation });
+      expect(closed?.closedAt).toBeNumber();
+      expect(await db.collection("messages").countDocuments({ conversation }))
+        .toBe(conversation === related.conversation ? 2 : 1);
+    }
+    expect(await db.collection("conversations").findOne({ id: unrelated.conversation }))
+      .not.toBeNull();
+    expect(await db.collection("messages").countDocuments({
+      conversation: unrelated.conversation,
+    })).toBe(1);
+
+    const inbox = await requestJson("/api/messaging/conversations", { user: buyer });
+    expect(inbox.response.status).toBe(200);
+    for (const conversation of [related.conversation, relatedSecond.conversation]) {
+      expect(await db.collection("conversations").findOne({ id: conversation }))
+        .not.toBeNull();
+    }
+
+    await db.collection("conversations").updateMany(
+      { id: { $in: [related.conversation, relatedSecond.conversation] } },
+      { $set: { closedAt: Date.now() - 25 * 60 * 60 * 1000 } },
+    );
+    const expiredThread = await requestJson("/api/messaging/messages", {
+      conversation: related.conversation,
+      reader: buyer,
+    });
+    expect(expiredThread.response.status).toBe(200);
+    expect(expiredThread.data).toHaveProperty("result.messages", []);
+    expect(await db.collection("conversations").findOne({ id: related.conversation }))
+      .toBeNull();
+    expect(await db.collection("messages").countDocuments({
+      conversation: related.conversation,
+    })).toBe(0);
+
+    const expiredInbox = await requestJson("/api/messaging/conversations", {
+      user: buyer,
+    });
+    expect(expiredInbox.response.status).toBe(200);
+    for (const conversation of [related.conversation, relatedSecond.conversation]) {
+      expect(await db.collection("conversations").findOne({ id: conversation }))
+        .toBeNull();
+      expect(await db.collection("messages").countDocuments({ conversation }))
+        .toBe(0);
+    }
+    expect(await db.collection("conversations").findOne({ id: unrelated.conversation }))
+      .not.toBeNull();
+  });
+
   test("releases a buyer's claim back into available inventory", async () => {
     const seller = `${testPrefix}-release-owner`;
     const buyer = `${testPrefix}-release-buyer`;
@@ -309,9 +409,8 @@ describe("messaging", () => {
       { $set: { closedAt: Date.now() - 25 * 60 * 60 * 1000 } },
     );
     await messaging.purgeClosed();
-    await expect(
-      messaging._messages({ conversation, reader: recipient }),
-    ).rejects.toBeInstanceOf(UnknownConversation);
+    expect(await messaging._messages({ conversation, reader: recipient }))
+      .toEqual([]);
   });
 });
 

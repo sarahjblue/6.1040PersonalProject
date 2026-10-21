@@ -49,6 +49,14 @@ function isMember(conversation: ConversationDocument, user: string): boolean {
   return conversation.initiator === user || conversation.recipient === user;
 }
 
+export async function closeConversationsForTopic(topic: string): Promise<void> {
+  await ensureIndexes();
+  await conversations.updateMany(
+    { topic, closedAt: { $exists: false } },
+    { $set: { closedAt: Date.now() } },
+  );
+}
+
 export class MessagingConcept {
   async startConversation({
     initiator,
@@ -142,9 +150,7 @@ export class MessagingConcept {
   await ensureIndexes();
 
   const thread = await conversations.findOne({ id: conversation });
-  if (!thread) {
-    throw new UnknownConversation("This conversation does not exist.");
-  }
+  if (!thread) return [];
 
   if (!isMember(thread, reader)) {
     throw new NotConversationMember("You are not a member of this conversation.");
@@ -194,11 +200,7 @@ export class MessagingConcept {
 }
 
   async closeConversation({ topic }: { topic: string }): Promise<{}> {
-    await ensureIndexes();
-    await conversations.updateMany(
-      { topic, closedAt: { $exists: false } },
-      { $set: { closedAt: Date.now() } },
-    );
+    await closeConversationsForTopic(topic);
     return {};
   }
 

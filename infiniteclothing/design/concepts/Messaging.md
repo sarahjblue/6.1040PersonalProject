@@ -4,7 +4,7 @@
 allow users to message one another independently and keep track of what has been sent; deletes messages after the topic has been closed for 24 hours
 
 ## Principle
-after a user starts a conversation with another user about an Item by sending an initial message, the other user can reply; conversations are deleted 24 hours after their topic closes
+after a user starts a conversation with another user about an Item by sending an initial message, the other user can reply; conversations are deleted 24 hours after their topic closes, including when the Item is deleted
 
 ## Types
 
