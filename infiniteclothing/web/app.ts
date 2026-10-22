@@ -60,6 +60,16 @@ const addItemPanel =
   document.querySelector<HTMLElement>("#add-item-panel");
 const closeAddItemButton =
   document.querySelector<HTMLButtonElement>("#close-add-item");
+const myItemsLauncher =
+  document.querySelector<HTMLButtonElement>("#my-items-launcher");
+const myItemsPanel =
+  document.querySelector<HTMLElement>("#my-items-panel");
+const closeMyItemsButton =
+  document.querySelector<HTMLButtonElement>("#close-my-items");
+const postedItemsList =
+  document.querySelector<HTMLDivElement>("#posted-items-list");
+const claimedItemsList =
+  document.querySelector<HTMLDivElement>("#claimed-items-list");
 const sellerInput =
   document.querySelector<HTMLInputElement>('#item-form input[name="seller"]');
 const form = document.querySelector<HTMLFormElement>("#item-form");
@@ -118,6 +128,11 @@ if (
   !addItemLauncher ||
   !addItemPanel ||
   !closeAddItemButton ||
+  !myItemsLauncher ||
+  !myItemsPanel ||
+  !closeMyItemsButton ||
+  !postedItemsList ||
+  !claimedItemsList ||
   !sellerInput ||
   !form ||
   !statusMessage ||
@@ -234,8 +249,12 @@ function setAuthenticatedUser(session: AuthSession) {
 }
 
 function setAddItemOpen(open: boolean) {
-  if (!addItemPanel || !addItemLauncher || !form) {
+  if (!addItemPanel || !addItemLauncher || !form || !myItemsPanel || !myItemsLauncher) {
     throw new Error("Missing add item controls.");
+  }
+  if (open) {
+    myItemsPanel.hidden = true;
+    myItemsLauncher.setAttribute("aria-expanded", "false");
   }
   addItemPanel.hidden = !open;
   addItemLauncher.setAttribute("aria-expanded", String(open));
@@ -243,6 +262,25 @@ function setAddItemOpen(open: boolean) {
     form.querySelector<HTMLInputElement>('input[name="name"]')?.focus();
   } else {
     addItemLauncher.focus();
+  }
+}
+
+function setMyItemsOpen(open: boolean) {
+  if (!myItemsPanel || !myItemsLauncher || !addItemLauncher) {
+    throw new Error("Missing inventory menu controls.");
+  }
+  if (open && addItemPanel) {
+    addItemPanel.hidden = true;
+    addItemLauncher.setAttribute("aria-expanded", "false");
+  }
+  myItemsPanel.hidden = !open;
+  myItemsLauncher.setAttribute("aria-expanded", String(open));
+  if (open) {
+    renderMyItems();
+    void fetchInventory();
+    closeMyItemsButton?.focus();
+  } else {
+    myItemsLauncher.focus();
   }
 }
 
@@ -260,6 +298,8 @@ function clearAuthenticatedUser() {
     !replyContentInput ||
     !addItemPanel ||
     !addItemLauncher ||
+    !myItemsPanel ||
+    !myItemsLauncher ||
     !authenticatedApp ||
     !authPanel
   ) {
@@ -290,6 +330,10 @@ function clearAuthenticatedUser() {
   messagesLauncher.setAttribute("aria-expanded", "false");
   addItemPanel.hidden = true;
   addItemLauncher.setAttribute("aria-expanded", "false");
+  myItemsPanel.hidden = true;
+  myItemsLauncher.setAttribute("aria-expanded", "false");
+  postedItemsList?.replaceChildren();
+  claimedItemsList?.replaceChildren();
   authenticatedApp.hidden = true;
   authPanel.hidden = false;
   renderInventory();
@@ -760,6 +804,49 @@ function renderInventory() {
     );
     inventoryContainer.appendChild(card);
   }
+}
+
+function renderMyItems() {
+  if (
+    !currentUserInput ||
+    !postedItemsList ||
+    !claimedItemsList
+  ) {
+    return;
+  }
+
+  const user = currentUserInput.value.trim();
+  const posted = items.filter((item) => item.seller === user);
+  const claimed = items.filter(
+    (item) => item.status === "CLAIMED" && item.buyer === user,
+  );
+  postedItemsList.replaceChildren();
+  claimedItemsList.replaceChildren();
+
+  const appendItems = (target: HTMLDivElement, entries: Item[], empty: string) => {
+    if (!entries.length) {
+      target.textContent = empty;
+      return;
+    }
+    for (const item of entries) {
+      const card = document.createElement("article");
+      card.className = "my-item-card";
+      const title = document.createElement("h4");
+      title.textContent = item.name;
+      const status = document.createElement("p");
+      status.textContent = `Status: ${item.status ?? "AVAILABLE"}`;
+      const details = document.createElement("p");
+      details.textContent =
+        item.seller === user && item.status === "CLAIMED" && item.buyer
+          ? `Claimed by: ${item.buyer}`
+          : `Seller: ${item.seller} · Price: ${item.price ?? "Not listed"}`;
+      card.append(title, status, details);
+      target.appendChild(card);
+    }
+  };
+
+  appendItems(postedItemsList, posted, "You haven’t posted any items.");
+  appendItems(claimedItemsList, claimed, "You haven’t claimed any items.");
 }
 
 function extractSearchIds(data: unknown): Set<number> | undefined {
@@ -1238,12 +1325,17 @@ async function fetchInventory() {
       claimedItems = loadedClaimedItems;
     }
 
-    const loadedItems = [...availableItems, ...claimedItems];
+    const loadedItems = [...availableItems, ...claimedItems].filter(
+      (item, index, all) =>
+        item.id === undefined ||
+        all.findIndex((candidate) => candidate.id === item.id) === index,
+    );
     const tagsByItem = await Promise.all(
       loadedItems.map(async (item) => [item, await fetchItemTags(item)] as const),
     );
     for (const [item, tags] of tagsByItem) item.tags = tags;
     items.splice(0, items.length, ...loadedItems);
+    renderMyItems();
     statusMessage.textContent = "";
   } catch (error) {
     statusMessage.textContent =
@@ -1769,6 +1861,10 @@ addItemLauncher.addEventListener("click", () => {
   setAddItemOpen(addItemPanel.hidden === true);
 });
 closeAddItemButton.addEventListener("click", () => setAddItemOpen(false));
+myItemsLauncher.addEventListener("click", () => {
+  setMyItemsOpen(myItemsPanel.hidden === true);
+});
+closeMyItemsButton.addEventListener("click", () => setMyItemsOpen(false));
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -1974,6 +2070,9 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !myItemsPanel.hidden) {
+    setMyItemsOpen(false);
+  }
   if (event.key === "Escape" && !addItemPanel.hidden) {
     setAddItemOpen(false);
   }

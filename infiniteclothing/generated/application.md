@@ -41,7 +41,7 @@ Defined in [Inventory](../design/concepts/Inventory.md), line 1.
 
 - `_getSeller(item: Item) : optional (seller: User)`
 - `_available() : many (item: Item, name: String, description?: String, price?: String, seller: User, image: Image)`
-- `_claimedForUser(user: User) : many (item: Item, name: String, description?: String, price?: String, seller: User, buyer: User, image: Image)`
+- `_claimedForUser(user: User) : many (item: Item, name: String, description?: String, price?: String, seller: User, buyer?: User, image: Image)`
 
 #### Instances
 

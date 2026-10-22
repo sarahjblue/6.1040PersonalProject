@@ -101,6 +101,40 @@
         aria-controls="add-item-panel"
         aria-label="Add an item to inventory"
       >+</button>
+      <button
+        id="my-items-launcher"
+        class="my-items-launcher"
+        type="button"
+        aria-expanded="false"
+        aria-controls="my-items-panel"
+        aria-label="Open your items menu"
+      >My items</button>
+      <section
+        id="my-items-panel"
+        class="my-items-panel panel"
+        aria-labelledby="my-items-title"
+        hidden
+      >
+        <header class="my-items-header">
+          <h2 id="my-items-title">My items</h2>
+          <button
+            id="close-my-items"
+            class="add-item-close"
+            type="button"
+            aria-label="Close my items menu"
+          >×</button>
+        </header>
+        <div class="my-items-sections">
+          <section aria-labelledby="posted-items-title">
+            <h3 id="posted-items-title">Items you’ve posted</h3>
+            <div id="posted-items-list" class="my-items-list"></div>
+          </section>
+          <section aria-labelledby="claimed-items-title">
+            <h3 id="claimed-items-title">Items you’ve claimed</h3>
+            <div id="claimed-items-list" class="my-items-list"></div>
+          </section>
+        </div>
+      </section>
       <section
         id="add-item-panel"
         class="add-item-panel panel"

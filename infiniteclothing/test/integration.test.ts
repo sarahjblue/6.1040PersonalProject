@@ -122,6 +122,11 @@ describe("inventory", () => {
     expect(item.status).toBe("AVAILABLE");
     expect((await inventory._available()).some(({ item: row }) => row.id === item.id))
       .toBe(true);
+    expect(await inventory._claimedForUser({ user: seller })).toContainEqual(
+      expect.objectContaining({
+        item: expect.objectContaining({ id: item.id, status: "AVAILABLE" }),
+      }),
+    );
 
     await expect(
       inventory.edit({ item, user: `${testPrefix}-stranger`, price: "$6" }),
@@ -170,6 +175,11 @@ describe("inventory", () => {
       }),
     ).rejects.toBeInstanceOf(NotSellerComplete);
     await inventory.transactionCompleted({ item, user: seller });
+    expect(await inventory._claimedForUser({ user: seller })).toContainEqual(
+      expect.objectContaining({
+        item: expect.objectContaining({ id: item.id, status: "COMPLETED" }),
+      }),
+    );
     await expect(
       inventory.delete({ item, user: seller }),
     ).rejects.toBeInstanceOf(DeleteNotCompleted);

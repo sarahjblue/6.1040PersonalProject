@@ -198,27 +198,21 @@ export class InventoryConcept{
   description?: string;
   price?: string;
   seller: string;
-  buyer: string;
+  buyer?: string;
   image: string;
 }>> {
   const rows = await items.find({
-    status: "CLAIMED",
-    $or: [{ buyer: user }, { seller: user }],
+    $or: [{ seller: user }, { status: "CLAIMED", buyer: user }],
   }).toArray();
 
-  return rows.map((item) => {
-    if (!item.buyer) {
-      throw new Error(`Claimed item ${item.id} has no buyer.`);
-    }
-    return {
-      item,
-      name: item.name,
-      description: item.description,
-      price: item.price,
-      seller: item.seller,
-      buyer: item.buyer,
-      image: item.image,
-    };
-  });
+  return rows.map((item) => ({
+    item,
+    name: item.name,
+    description: item.description,
+    price: item.price,
+    seller: item.seller,
+    buyer: item.buyer,
+    image: item.image,
+  }));
 }
 }
