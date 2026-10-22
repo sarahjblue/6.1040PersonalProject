@@ -4,7 +4,7 @@
   --border: #111;
   --text: #111;
   --muted: #666;
-  --accent: #1d9d5b;
+  --accent: #3f560aff;
   --chip: #dccbf7;
 }
 
@@ -195,7 +195,10 @@ button {
   grid-template-rows: auto auto minmax(0, 1fr);
   gap: 0.75rem;
   width: min(620px, calc(100vw - 2rem));
+  height: min(720px, calc(100vh - 7rem));
+  height: min(720px, calc(100dvh - 7rem));
   max-height: min(720px, calc(100vh - 7rem));
+  max-height: min(720px, calc(100dvh - 7rem));
   overflow: hidden;
   padding: 1rem;
   border: 3px solid var(--border);
@@ -247,8 +250,11 @@ button {
 }
 
 .start-conversation[open] {
-  max-height: 40vh;
+  height: min(40vh, 18rem);
+  max-height: min(40vh, 18rem);
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .message-compose label {
@@ -428,8 +434,28 @@ button {
     right: 0.5rem;
     bottom: 5rem;
     width: calc(100vw - 1rem);
+    height: calc(100vh - 6rem);
+    height: calc(100dvh - 6rem);
     max-height: calc(100vh - 6rem);
+    max-height: calc(100dvh - 6rem);
     padding: 0.75rem;
+  }
+
+  .start-conversation[open] {
+    height: min(25vh, 10rem);
+    max-height: min(25vh, 10rem);
+  }
+
+  .message-layout {
+    grid-template-rows: minmax(3.5rem, 0.3fr) minmax(0, 0.7fr);
+  }
+
+  .message-thread {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .message-list {
+    min-height: 0;
   }
 }
 

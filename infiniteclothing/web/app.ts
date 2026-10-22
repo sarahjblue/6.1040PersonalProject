@@ -1748,7 +1748,9 @@ form.addEventListener("submit", async (event) => {
       return;
     }
 
+    const seller = sellerInput.value;
     form.reset();
+    sellerInput.value = seller;
     await fetchInventory();
     statusMessage.textContent = "Item posted successfully.";
   } catch (error) {
