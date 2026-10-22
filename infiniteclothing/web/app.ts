@@ -619,6 +619,9 @@ function renderInventory() {
   const currentUser = currentUserInput.value.trim();
 
   for (const item of items) {
+    if (item.status === "COMPLETED") {
+      continue;
+    }
     if (
       visibleItemIds &&
       (item.id === undefined || !visibleItemIds.has(item.id))
@@ -690,7 +693,6 @@ function renderInventory() {
     messageSellerButton.hidden =
       !currentUser ||
       isCurrentSeller ||
-      item.status === "COMPLETED" ||
       item.id === undefined;
     messageSellerButton.addEventListener("click", () =>
       void messageSellerAboutItem(item),
@@ -740,8 +742,7 @@ function renderInventory() {
     deleteButton.textContent = "Delete";
     deleteButton.hidden =
       !isCurrentSeller ||
-      item.id === undefined ||
-      item.status === "COMPLETED";
+      item.id === undefined;
     deleteButton.addEventListener("click", () => void deleteItem(item, deleteButton));
 
     const tagEditor = document.createElement("details");
