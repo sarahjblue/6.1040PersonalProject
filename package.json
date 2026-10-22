@@ -13,7 +13,7 @@
     "@types/node": "^24.0.0"
   },
   "scripts": {
-    "build": "bun run check",
+    "build": "bun scripts/build.ts",
     "generate": "cd infiniteclothing && bunx --no-install sync-engine artifacts pin",
     "check": "cd infiniteclothing && bunx --no-install sync-engine check && bunx --no-install sync-engine artifacts check && bunx --no-install tsc --noEmit",
     "test": "cd infiniteclothing && bun test",
