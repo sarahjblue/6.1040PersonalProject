@@ -41,7 +41,7 @@ Defined in [Inventory](../design/concepts/Inventory.md), line 1.
 
 - `_getSeller(item: Item) : optional (seller: User)`
 - `_available() : many (item: Item, name: String, description?: String, price?: String, seller: User, image: Image)`
-- `_claimedForUser(user: User) : many (item: Item, name: String, description?: String, price?: String, seller: User, image: Image)`
+- `_claimedForUser(user: User) : many (item: Item, name: String, description?: String, price?: String, seller: User, buyer: User, image: Image)`
 
 #### Instances
 
@@ -167,10 +167,11 @@ Former "available inventory" — inputs (); bindings (item, name, description, p
 ### claimed inventory
 
 ```former
-Former "claimed inventory" — inputs (user); bindings (item, name, description, price, image, seller); promises exactly one record — forms:
+Former "claimed inventory" — inputs (user); bindings (item, name, description, price, image, seller, buyer); promises exactly one record — forms:
   a record of
-    items: each Inventory._claimedForUser (user) has (description, image, item, name, price, seller)
+    items: each Inventory._claimedForUser (user) has (buyer, description, image, item, name, price, seller)
       form a record of
+        buyer
         description
         image
         item

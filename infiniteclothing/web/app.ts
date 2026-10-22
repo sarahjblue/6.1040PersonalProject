@@ -594,6 +594,17 @@ function renderInventory() {
 
     const details = document.createElement("p");
     details.textContent = `Seller: ${item.seller} · Price: ${item.price ?? "Not listed"}`;
+    const cardHeader: HTMLElement[] = [image, title, details];
+    if (
+      item.status === "CLAIMED" &&
+      item.seller === currentUser &&
+      item.buyer
+    ) {
+      const claimDetails = document.createElement("p");
+      claimDetails.className = "claim-details";
+      claimDetails.textContent = `Claimed by: ${item.buyer}`;
+      cardHeader.push(claimDetails);
+    }
 
     const description = document.createElement("p");
     description.textContent = item.description ?? "";
@@ -745,7 +756,13 @@ function renderInventory() {
       replaceImageInput,
       deleteButton,
     );
-    card.append(image, title, details, description, tagsList, actions, tagEditor);
+    card.append(
+      ...cardHeader,
+      description,
+      tagsList,
+      actions,
+      tagEditor,
+    );
     inventoryContainer.appendChild(card);
   }
 }

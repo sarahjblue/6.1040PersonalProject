@@ -158,7 +158,9 @@ describe("inventory", () => {
 
     const sellerClaims = await inventory._claimedForUser({ user: seller });
     const buyerClaims = await inventory._claimedForUser({ user: buyer });
-    expect(sellerClaims.some(({ item: row }) => row.id === item.id)).toBe(true);
+    expect(sellerClaims).toContainEqual(
+      expect.objectContaining({ item: expect.objectContaining({ id: item.id }), buyer }),
+    );
     expect(buyerClaims.some(({ item: row }) => row.id === item.id)).toBe(true);
 
     await expect(
@@ -591,6 +593,19 @@ describe("HTTP compositions", () => {
       user: buyerName,
     });
     expect(claimed.response.status).toBe(200);
+    const sellerClaimed = await requestJson("/api/inventory/claimed", {
+      user: sellerName,
+    });
+    expect(sellerClaimed.response.status).toBe(200);
+    const sellerClaimedData = sellerClaimed.data as {
+      inventory: { items: Array<{ item: Item; buyer: string }> };
+    };
+    expect(sellerClaimedData.inventory.items).toContainEqual(
+      expect.objectContaining({
+        item: expect.objectContaining({ id: item.id }),
+        buyer: buyerName,
+      }),
+    );
 
     const release = await requestJson("/api/inventory/releaseClaim", {
       item,

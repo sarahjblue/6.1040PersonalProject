@@ -27,7 +27,7 @@ const Available = endpoint("/inventory/available", () =>
 
 const ClaimedInventory = former(
   "claimed inventory",
-  ({ user }, { item, name, description, price, image, seller }) =>
+  ({ user }, { item, name, description, price, image, seller, buyer }) =>
     form({
       items: each(
         Inventory._claimedForUser({ user }).is({
@@ -37,8 +37,9 @@ const ClaimedInventory = former(
           price,
           image,
           seller,
+          buyer,
         }),
-      ).form({ item, name, description, price, image, seller }),
+      ).form({ item, name, description, price, image, seller, buyer }),
     }),
 );
 

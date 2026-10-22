@@ -42,6 +42,7 @@ export type ApplicationWire = {
     output: {
       "inventory": {
         "items": {
+          "buyer": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedForUser"]>>>, ["buyer"]>>;
           "description": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedForUser"]>>>, ["description"]>>;
           "image": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedForUser"]>>>, ["image"]>>;
           "item": Jsonify<AtPath<QueryRow<Awaited<ReturnType<(typeof ApplicationConceptSet.concepts)["Inventory"]["_claimedForUser"]>>>, ["item"]>>;
