@@ -30,3 +30,8 @@ The UI for adding an item: [Add Item](../6.1040PersonalProject/initialUI/addItem
 ## User Journey
 
 Here is the link for the user journey. [User Journey](userjourney.md)
+
+
+## Video Example 1
+
+[video example](https://drive.google.com/file/d/17HkwxDhfb0_8WSRk0sbup-9UyXMlYQHQ/view?usp=sharing)
