@@ -648,14 +648,9 @@ function renderInventory() {
       isCurrentSeller ||
       item.status === "COMPLETED" ||
       item.id === undefined;
-    messageSellerButton.addEventListener("click", () => {
-      messageRecipientInput.value = item.seller;
-      messageTopicInput.value =
-        item.id === undefined ? "" : String(item.id);
-      messageTopicInput.readOnly = item.id !== undefined;
-      setMessagesOpen(true);
-      initialMessageInput.focus();
-    });
+    messageSellerButton.addEventListener("click", () =>
+      void messageSellerAboutItem(item),
+    );
 
     const releaseButton = document.createElement("button");
     releaseButton.type = "button";
@@ -970,7 +965,48 @@ function removeExpiredConversations() {
   renderConversations();
 }
 
-async function loadConversations() {
+async function messageSellerAboutItem(item: Item) {
+  if (
+    item.id === undefined ||
+    !currentUserInput ||
+    !messageRecipientInput ||
+    !messageTopicInput ||
+    !initialMessageInput ||
+    !startConversationForm
+  ) {
+    return;
+  }
+
+  const user = currentUserInput.value.trim();
+  if (!user) return;
+
+  if (!await loadConversations()) return;
+  const existing = conversations.find(
+    (conversation) =>
+      conversation.topic === String(item.id) &&
+      ((conversation.initiator === user &&
+        conversation.recipient === item.seller) ||
+        (conversation.initiator === item.seller &&
+          conversation.recipient === user)),
+  );
+  if (existing) {
+    await openConversation(existing);
+    return;
+  }
+
+  messageRecipientInput.value = item.seller;
+  messageTopicInput.value = String(item.id);
+  messageTopicInput.readOnly = true;
+  setMessagesOpen(true);
+  const composeDetails = startConversationForm.closest("details");
+  if (!composeDetails) {
+    throw new Error("Missing start-conversation panel.");
+  }
+  composeDetails.open = true;
+  initialMessageInput.focus();
+}
+
+async function loadConversations(): Promise<boolean> {
   if (
     !statusMessage ||
     !currentUserInput ||
@@ -980,7 +1016,7 @@ async function loadConversations() {
     !sendMessageButton ||
     !replyContentInput
   ) {
-    return;
+    return false;
   }
   removeExpiredConversations();
   const user = currentUserInput.value.trim();
@@ -993,7 +1029,7 @@ async function loadConversations() {
     sendMessageButton.disabled = true;
     replyContentInput.disabled = true;
     renderConversations();
-    return;
+    return false;
   }
 
   try {
@@ -1072,9 +1108,11 @@ async function loadConversations() {
       replyContentInput.value = "";
       replyContentInput.disabled = true;
     }
+    return true;
   } catch (error) {
     statusMessage.textContent =
       error instanceof Error ? error.message : "Could not load conversations.";
+    return false;
   }
 }
 
