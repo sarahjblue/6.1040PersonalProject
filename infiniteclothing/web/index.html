@@ -70,30 +70,69 @@
         <button id="logout-button" type="button">Sign out</button>
       </header>
       <main class="page">
-      <section class="panel">
-        <h1>Post an item</h1>
+        <section class="panel inventory-page">
+          <h1>Marketplace</h1>
+          <label>
+            Your username
+            <input id="current-user" type="text" readonly required />
+          </label>
+          <fieldset class="tag-filters">
+            <legend>Filter by tags</legend>
+            <label>
+              Size
+              <select id="filter-size-tag"></select>
+            </label>
+            <label>
+              Color
+              <select id="filter-color-tag"></select>
+            </label>
+            <button id="apply-tag-filter" type="button">Apply filters</button>
+            <button id="clear-tag-filter" type="button">Clear filters</button>
+          </fieldset>
+          <div id="inventory" class="inventory"></div>
+        </section>
+      </main>
 
+      <button
+        id="add-item-launcher"
+        class="add-item-launcher"
+        type="button"
+        aria-expanded="false"
+        aria-controls="add-item-panel"
+        aria-label="Add an item to inventory"
+      >+</button>
+      <section
+        id="add-item-panel"
+        class="add-item-panel panel"
+        aria-labelledby="add-item-title"
+        hidden
+      >
+        <header class="add-item-header">
+          <h2 id="add-item-title">Add an item</h2>
+          <button
+            id="close-add-item"
+            class="add-item-close"
+            type="button"
+            aria-label="Close add item form"
+          >×</button>
+        </header>
         <form id="item-form" class="item-form">
           <label>
             Seller
             <input name="seller" type="text" readonly required />
           </label>
-
           <label>
             Item name
             <input name="name" type="text" placeholder="Give the item a name" required />
           </label>
-
           <label>
             Description
             <textarea name="description" rows="3" placeholder="Describe the item"></textarea>
           </label>
-
           <label>
             Price
             <input name="price" type="text" placeholder="$5" required />
           </label>
-
           <label>
             Item image (JPEG or PNG, up to 5 MB)
             <input
@@ -103,7 +142,6 @@
               required
             />
           </label>
-
           <fieldset class="tag-fields">
             <legend>Tags</legend>
             <label>
@@ -115,35 +153,10 @@
               <select id="color-tag" name="colorTag"></select>
             </label>
           </fieldset>
-
           <button type="submit">POST</button>
         </form>
-
         <p id="status" class="status" aria-live="polite"></p>
       </section>
-
-      <section class="panel">
-        <h2>Marketplace</h2>
-        <label>
-          Your username
-          <input id="current-user" type="text" readonly required />
-        </label>
-        <fieldset class="tag-filters">
-          <legend>Filter by tags</legend>
-          <label>
-            Size
-            <select id="filter-size-tag"></select>
-          </label>
-          <label>
-            Color
-            <select id="filter-color-tag"></select>
-          </label>
-          <button id="apply-tag-filter" type="button">Apply filters</button>
-          <button id="clear-tag-filter" type="button">Clear filters</button>
-        </fieldset>
-        <div id="inventory" class="inventory"></div>
-      </section>
-      </main>
 
       <button
         id="messages-launcher"

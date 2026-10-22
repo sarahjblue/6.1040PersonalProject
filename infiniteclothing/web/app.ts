@@ -54,6 +54,12 @@ const loginForm = document.querySelector<HTMLFormElement>("#login-form");
 const registerForm = document.querySelector<HTMLFormElement>("#register-form");
 const logoutButton =
   document.querySelector<HTMLButtonElement>("#logout-button");
+const addItemLauncher =
+  document.querySelector<HTMLButtonElement>("#add-item-launcher");
+const addItemPanel =
+  document.querySelector<HTMLElement>("#add-item-panel");
+const closeAddItemButton =
+  document.querySelector<HTMLButtonElement>("#close-add-item");
 const sellerInput =
   document.querySelector<HTMLInputElement>('#item-form input[name="seller"]');
 const form = document.querySelector<HTMLFormElement>("#item-form");
@@ -109,6 +115,9 @@ if (
   !loginForm ||
   !registerForm ||
   !logoutButton ||
+  !addItemLauncher ||
+  !addItemPanel ||
+  !closeAddItemButton ||
   !sellerInput ||
   !form ||
   !statusMessage ||
@@ -224,6 +233,19 @@ function setAuthenticatedUser(session: AuthSession) {
   authenticatedApp.hidden = false;
 }
 
+function setAddItemOpen(open: boolean) {
+  if (!addItemPanel || !addItemLauncher || !form) {
+    throw new Error("Missing add item controls.");
+  }
+  addItemPanel.hidden = !open;
+  addItemLauncher.setAttribute("aria-expanded", String(open));
+  if (open) {
+    form.querySelector<HTMLInputElement>('input[name="name"]')?.focus();
+  } else {
+    addItemLauncher.focus();
+  }
+}
+
 function clearAuthenticatedUser() {
   if (
     !currentUserInput ||
@@ -236,6 +258,8 @@ function clearAuthenticatedUser() {
     !threadTitle ||
     !sendMessageButton ||
     !replyContentInput ||
+    !addItemPanel ||
+    !addItemLauncher ||
     !authenticatedApp ||
     !authPanel
   ) {
@@ -264,6 +288,8 @@ function clearAuthenticatedUser() {
   signedInUser.textContent = "";
   messagesPanel.hidden = true;
   messagesLauncher.setAttribute("aria-expanded", "false");
+  addItemPanel.hidden = true;
+  addItemLauncher.setAttribute("aria-expanded", "false");
   authenticatedApp.hidden = true;
   authPanel.hidden = false;
   renderInventory();
@@ -1684,6 +1710,11 @@ logoutButton.addEventListener("click", () => {
   clearAuthenticatedUser();
 });
 
+addItemLauncher.addEventListener("click", () => {
+  setAddItemOpen(addItemPanel.hidden === true);
+});
+closeAddItemButton.addEventListener("click", () => setAddItemOpen(false));
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -1888,6 +1919,9 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !addItemPanel.hidden) {
+    setAddItemOpen(false);
+  }
   if (event.key === "Escape" && !messagesPanel.hidden) {
     setMessagesOpen(false);
   }
