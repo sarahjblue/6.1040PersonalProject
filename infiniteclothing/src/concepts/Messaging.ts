@@ -71,6 +71,16 @@ export class MessagingConcept {
   }): Promise<{ conversation: number }> {
     await ensureIndexes();
     if (initiator === recipient) throw new SelfMessage("You cannot start a conversation with yourself.");
+    const existing = await conversations.findOne({
+      topic,
+      $or: [
+        { initiator, recipient },
+        { initiator: recipient, recipient: initiator },
+      ],
+    });
+    if (existing) {
+      throw new ConversationExists("You already have a conversation about this item.");
+    }
 
     const id = await nextId("conversations");
     await conversations.insertOne({ id, topic, initiator, recipient });
@@ -99,7 +109,12 @@ export class MessagingConcept {
     await ensureIndexes();
 
     const thread = await conversations.findOne({ id: conversation });
-    if (!thread || !isMember(thread, sender)) throw new NotConversationMember("You are not a member of this conversation.");
+    if (!thread) {
+      throw new SendUnknownConversation("There is no conversation.");
+    }
+    if (!isMember(thread, sender)) {
+      throw new InvalidConversation("You are not a member of this conversation.");
+    }
     if (thread.closedAt !== undefined) throw new ConversationClosed("This conversation is closed.");
 
     const id = await nextId("messages");

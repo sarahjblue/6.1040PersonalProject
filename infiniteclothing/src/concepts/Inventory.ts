@@ -36,6 +36,14 @@ const items = db.collection<Item>("inventory");
 export class InventoryConcept{
 
     async post({name, seller, image, description, price}: {name: string, seller: string, image: string, description?: string, price?: string}): Promise<{item: Item}> {
+        const duplicate = await items.findOne({
+            name,
+            seller,
+            description,
+        });
+        if (duplicate) {
+            throw new ItemAlreadyPosted("You already have posted an item with that name and description.");
+        }
 
         const id = await nextId("inventory");
 
@@ -126,7 +134,21 @@ export class InventoryConcept{
     }
 
     async releaseClaim({item, user}: {item: Item, user: string}): Promise<{}> {
-        const result = await items.updateOne({id: item.id, status: "CLAIMED", buyer: user}, {$set: {status: "AVAILABLE"}, $unset: {buyer: ""}},);
+        const found = await items.findOne({ id: item.id });
+        if (!found) {
+            throw new ReleaseUnknownItem("There is no such item.");
+        }
+        if (found.status !== "CLAIMED") {
+            throw new ReleaseUnclaimed("This item has not been claimed.");
+        }
+        if (found.buyer !== user) {
+            throw new ReleaseNotBuyer("You can not release this claim.");
+        }
+
+        const result = await items.updateOne(
+            { id: item.id, status: "CLAIMED", buyer: user },
+            { $set: { status: "AVAILABLE" }, $unset: { buyer: "" } },
+        );
 
         if(!result.modifiedCount){
             throw new ReleaseNotBuyer("You can not release this claim.");

@@ -2,13 +2,21 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { db, connectDatabase, disconnectDatabase } from "../src/db.ts";
 import {
   ClaimUnknownItem,
+  CompleteUnknownItem,
+  DeleteUnknownItem,
   DeleteNotCompleted,
+  EditUnknownItem,
   InventoryConcept,
+  ItemAlreadyPosted,
   ItemNotAvailableToClaim,
+  NotClaimed,
   NoEditChanges,
   NotSellerComplete,
   NotSellerDelete,
   NotSellerEdit,
+  ReleaseNotBuyer,
+  ReleaseUnknownItem,
+  ReleaseUnclaimed,
   SellerCannotClaim,
 } from "../src/concepts/Inventory.ts";
 import {
@@ -20,13 +28,19 @@ import {
 } from "../src/concepts/Tagging.ts";
 import {
   ConversationClosed,
+  ConversationExists,
+  InvalidConversation,
   MessagingConcept,
   NotConversationMember,
+  SendUnknownConversation,
   SelfMessage,
+  UnknownConversation,
 } from "../src/concepts/Messaging.ts";
 import {
+  EmailAlreadyUsed,
   IncorrectPassword,
   MITUserVerificationConcept,
+  NoUsernameFound,
   NotMIT,
   UsernameAlreadyUsed,
 } from "../src/concepts/MITUserVerification.ts";
@@ -127,6 +141,7 @@ describe("inventory", () => {
         item: expect.objectContaining({ id: item.id, status: "AVAILABLE" }),
       }),
     );
+    const original = await db.collection("inventory").findOne({ id: item.id });
 
     await expect(
       inventory.edit({ item, user: `${testPrefix}-stranger`, price: "$6" }),
@@ -134,6 +149,7 @@ describe("inventory", () => {
     await expect(
       inventory.edit({ item, user: seller }),
     ).rejects.toBeInstanceOf(NoEditChanges);
+    expect(await db.collection("inventory").findOne({ id: item.id })).toEqual(original);
 
     await inventory.edit({
       item,
@@ -148,18 +164,73 @@ describe("inventory", () => {
     expect(updated?.price).toBe("$7");
   });
 
+  test("rejects duplicate posts and invalid inventory actions without changing state", async () => {
+    const seller = `${testPrefix}-validation-owner`;
+    const buyer = `${testPrefix}-validation-buyer`;
+    const item = await postItem(`${testPrefix}-validation-item`, seller);
+    const original = await db.collection("inventory").findOne({ id: item.id });
+
+    await expect(inventory.post(itemInput(item.name, seller)))
+      .rejects.toBeInstanceOf(ItemAlreadyPosted);
+    expect(await db.collection("inventory").countDocuments({
+      name: item.name,
+      seller,
+    })).toBe(1);
+
+    await expect(inventory.edit({
+      item: { ...item, id: -1 },
+      user: seller,
+      price: "$8",
+    })).rejects.toBeInstanceOf(EditUnknownItem);
+    await expect(inventory.delete({
+      item: { ...item, id: -1 },
+      user: seller,
+    })).rejects.toBeInstanceOf(DeleteUnknownItem);
+    await expect(inventory.releaseClaim({
+      item: { ...item, id: -1 },
+      user: buyer,
+    })).rejects.toBeInstanceOf(ReleaseUnknownItem);
+    await expect(inventory.releaseClaim({ item, user: buyer }))
+      .rejects.toBeInstanceOf(ReleaseUnclaimed);
+    await expect(inventory.transactionCompleted({
+      item: { ...item, id: -1 },
+      user: seller,
+    })).rejects.toBeInstanceOf(CompleteUnknownItem);
+    await expect(inventory.transactionCompleted({ item, user: seller }))
+      .rejects.toBeInstanceOf(NotClaimed);
+
+    expect(await db.collection("inventory").findOne({ id: item.id })).toEqual(original);
+    expect(await db.collection("inventory").findOne({ id: -1 })).toBeNull();
+
+    await inventory.claim({ item, claimer: buyer });
+    const claimed = await db.collection("inventory").findOne({ id: item.id });
+    await expect(inventory.releaseClaim({
+      item,
+      user: `${testPrefix}-not-the-buyer`,
+    })).rejects.toBeInstanceOf(ReleaseNotBuyer);
+    await expect(inventory.delete({
+      item,
+      user: `${testPrefix}-not-the-seller`,
+    })).rejects.toBeInstanceOf(NotSellerDelete);
+    expect(await db.collection("inventory").findOne({ id: item.id })).toEqual(claimed);
+  });
+
   test("enforces claiming, releasing, seller completion, and completed deletion rules", async () => {
     const seller = `${testPrefix}-owner`;
     const buyer = `${testPrefix}-buyer`;
     const item = await postItem(`${testPrefix}-transaction`, seller);
 
+    const available = await db.collection("inventory").findOne({ id: item.id });
     await expect(
       inventory.claim({ item, claimer: seller }),
     ).rejects.toBeInstanceOf(SellerCannotClaim);
+    expect(await db.collection("inventory").findOne({ id: item.id })).toEqual(available);
     await inventory.claim({ item, claimer: buyer });
+    const claimed = await db.collection("inventory").findOne({ id: item.id });
     await expect(
       inventory.claim({ item, claimer: `${testPrefix}-other` }),
     ).rejects.toBeInstanceOf(ItemNotAvailableToClaim);
+    expect(await db.collection("inventory").findOne({ id: item.id })).toEqual(claimed);
 
     const sellerClaims = await inventory._claimedForUser({ user: seller });
     const buyerClaims = await inventory._claimedForUser({ user: buyer });
@@ -174,6 +245,7 @@ describe("inventory", () => {
         user: `${testPrefix}-other`,
       }),
     ).rejects.toBeInstanceOf(NotSellerComplete);
+    expect(await db.collection("inventory").findOne({ id: item.id })).toEqual(claimed);
     await inventory.transactionCompleted({ item, user: seller });
     expect(await inventory._claimedForUser({ user: seller })).toContainEqual(
       expect.objectContaining({
@@ -183,6 +255,8 @@ describe("inventory", () => {
     await expect(
       inventory.delete({ item, user: seller }),
     ).rejects.toBeInstanceOf(DeleteNotCompleted);
+    expect(await db.collection("inventory").findOne({ id: item.id }))
+      .toMatchObject({ status: "COMPLETED", buyer });
   });
 
   test("deletes an available item and refuses unknown item claims", async () => {
@@ -192,6 +266,8 @@ describe("inventory", () => {
     await expect(
       inventory.claim({ item: { ...item, id: -1 }, claimer: `${testPrefix}-buyer` }),
     ).rejects.toBeInstanceOf(ClaimUnknownItem);
+    expect(await db.collection("inventory").findOne({ id: item.id }))
+      .toMatchObject({ status: "AVAILABLE" });
 
     await inventory.delete({ item, user: seller });
     expect(
@@ -239,7 +315,7 @@ describe("inventory", () => {
     ).rejects.toBeInstanceOf(NotSellerDelete);
     for (const conversation of [related.conversation, relatedSecond.conversation]) {
       expect(await db.collection("conversations").findOne({ id: conversation }))
-        .not.toBeNull();
+        .not.toHaveProperty("closedAt");
       expect(await db.collection("messages").countDocuments({ conversation }))
         .toBe(conversation === related.conversation ? 2 : 1);
     }
@@ -357,6 +433,31 @@ describe("tagging", () => {
       tagging.clear({ item: `${testPrefix}-no-tags` }),
     ).rejects.toBeInstanceOf(ClearUnknownItem);
   });
+
+  test("keeps tag state unchanged on rejected and repeated actions", async () => {
+    const item = await postItem(
+      `${testPrefix}-tag-state`,
+      `${testPrefix}-tag-state-owner`,
+    );
+    const itemKey = String(item.id);
+    await tagging.tag({ item: itemKey, tag: "color:GREEN" });
+    const originalTags = await tagging._tagsForItem({ item: itemKey });
+
+    await expect(tagging.tag({ item: itemKey, tag: "color:RED" }))
+      .rejects.toBeInstanceOf(TagCategoryTaken);
+    await expect(tagging.tag({ item: itemKey, tag: "unknown:tag" }))
+      .rejects.toBeInstanceOf(TagNotExist);
+    expect(await tagging._tagsForItem({ item: itemKey })).toEqual(originalTags);
+
+    await tagging.tag({ item: itemKey, tag: "color:GREEN" });
+    await tagging.untag({ item: itemKey, tag: "unknown:tag" });
+    expect(await tagging._tagsForItem({ item: itemKey })).toEqual(originalTags);
+    await tagging.untag({ item: itemKey, tag: "color:GREEN" });
+    await tagging.untag({ item: itemKey, tag: "color:GREEN" });
+    expect(await tagging._tagsForItem({ item: itemKey })).toEqual([]);
+    await expect(tagging.clear({ item: itemKey }))
+      .rejects.toBeInstanceOf(ClearUnknownItem);
+  });
 });
 
 describe("messaging", () => {
@@ -373,6 +474,11 @@ describe("messaging", () => {
         content: "Self message",
       }),
     ).rejects.toBeInstanceOf(SelfMessage);
+    expect(await db.collection("conversations").countDocuments({ topic })).toBe(0);
+    expect(await db.collection("messages").countDocuments({
+      sender: initiator,
+      content: "Self message",
+    })).toBe(0);
 
     const { conversation } = await messaging.startConversation({
       initiator,
@@ -381,6 +487,19 @@ describe("messaging", () => {
       content: "Initial message",
     });
     conversationIds.push(conversation);
+
+    const initialMessageCount = await db.collection("messages")
+      .countDocuments({ conversation });
+    await expect(messaging.startConversation({
+      initiator: recipient,
+      recipient: initiator,
+      topic,
+      content: "Duplicate conversation",
+    })).rejects.toBeInstanceOf(ConversationExists);
+    expect(await db.collection("conversations").countDocuments({ topic }))
+      .toBe(1);
+    expect(await db.collection("messages").countDocuments({ conversation }))
+      .toBe(initialMessageCount);
 
     expect((await messaging._conversationsOf({ user: initiator }))).toContainEqual({
       conversation,
@@ -402,6 +521,28 @@ describe("messaging", () => {
         reader: `${testPrefix}-outsider`,
       }),
     ).rejects.toBeInstanceOf(NotConversationMember);
+    await expect(messaging.sendMessage({
+      conversation: -1,
+      sender: initiator,
+      content: "Unknown conversation",
+    })).rejects.toBeInstanceOf(SendUnknownConversation);
+    await expect(messaging.sendMessage({
+      conversation,
+      sender: `${testPrefix}-outsider`,
+      content: "Not a participant",
+    })).rejects.toBeInstanceOf(InvalidConversation);
+    await expect(messaging.markRead({
+      conversation,
+      reader: `${testPrefix}-outsider`,
+    })).rejects.toBeInstanceOf(NotConversationMember);
+    await expect(messaging.markRead({
+      conversation: -1,
+      reader: recipient,
+    })).rejects.toBeInstanceOf(UnknownConversation);
+    expect(await db.collection("messages").countDocuments({ conversation }))
+      .toBe(initialMessageCount);
+    expect((await messaging._messages({ conversation, reader: recipient }))[0]?.readStatus)
+      .toBe("UNREAD");
     await messaging.markRead({ conversation, reader: recipient });
     expect((await messaging._messages({ conversation, reader: recipient }))[0]?.readStatus)
       .toBe("READ");
@@ -411,10 +552,25 @@ describe("messaging", () => {
       sender: recipient,
       content: "Reply",
     });
+    const senderReadStatuses = await messaging._messages({
+      conversation,
+      reader: initiator,
+    });
+    expect(senderReadStatuses.map(({ readStatus }) => readStatus))
+      .toEqual(["READ", "UNREAD"]);
+    await messaging.markRead({ conversation, reader: initiator });
+    expect((await messaging._messages({ conversation, reader: initiator }))
+      .map(({ readStatus }) => readStatus)).toEqual(["READ", "READ"]);
     await messaging.closeConversation({ topic });
+    const closedAt = (await db.collection("conversations").findOne({ id: conversation }))
+      ?.closedAt;
+    await messaging.closeConversation({ topic });
+    expect((await db.collection("conversations").findOne({ id: conversation }))
+      ?.closedAt).toBe(closedAt);
     await expect(
       messaging.sendMessage({ conversation, sender: initiator, content: "Closed" }),
     ).rejects.toBeInstanceOf(ConversationClosed);
+    expect(await db.collection("messages").countDocuments({ conversation })).toBe(2);
 
     await db.collection("conversations").updateOne(
       { id: conversation },
@@ -439,6 +595,9 @@ describe("account verification and sessions", () => {
         password: "correct horse battery staple",
       }),
     ).rejects.toBeInstanceOf(NotMIT);
+    expect(await db.collection("users").countDocuments({
+      username: `${username}-outside`,
+    })).toBe(0);
 
     const registration = await users.register({
       username,
@@ -463,10 +622,24 @@ describe("account verification and sessions", () => {
         password: "another password",
       }),
     ).rejects.toBeInstanceOf(UsernameAlreadyUsed);
+    expect(await db.collection("users").countDocuments({ username })).toBe(1);
+    const duplicateEmailUsername = `${username}-duplicate-email`;
+    await expect(users.register({
+      username: duplicateEmailUsername,
+      email,
+      password: "another password",
+    })).rejects.toBeInstanceOf(EmailAlreadyUsed);
+    expect(await db.collection("users").findOne({ username: duplicateEmailUsername }))
+      .toBeNull();
+    await expect(users.authenticate({
+      username: `${username}-unknown`,
+      password: "correct horse battery staple",
+    })).rejects.toBeInstanceOf(NoUsernameFound);
 
     await expect(
       users.authenticate({ username, password: "wrong password" }),
     ).rejects.toBeInstanceOf(IncorrectPassword);
+    expect(await db.collection("users").findOne({ username })).toEqual(storedAccount);
     expect(
       (await users.authenticate({
         username,
@@ -484,6 +657,7 @@ describe("account verification and sessions", () => {
     const reopened = await sessions.sessionOpen({ user });
     expect(reopened.session.id).toBe(opened.session.id);
     expect(await sessions._getUser({ session: opened.session })).toEqual({ user });
+    expect(await db.collection("sessions").countDocuments({ username })).toBe(1);
   });
 });
 
