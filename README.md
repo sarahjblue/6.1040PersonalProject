@@ -33,5 +33,16 @@ Here is the link for the user journey. [User Journey](userjourney.md)
 
 
 ## Video Example 1
-
 [video example](https://drive.google.com/file/d/17HkwxDhfb0_8WSRk0sbup-9UyXMlYQHQ/view?usp=sharing)
+
+## Video Example 2
+[video example](https://drive.google.com/file/d/1cd3AGWYSf25fgldbgBCfVT0XHok53Syz/view?usp=sharing)
+
+
+## Deployed Link
+[deployed link](https://infiniteclothing.mit-sdg.dev/)
+
+
+## Running Tests
+
+To run the tests provided for the personal project, cd into 6.1040PersonalProject, then run 'bun run test'.
