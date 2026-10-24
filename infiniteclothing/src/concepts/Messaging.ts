@@ -30,6 +30,7 @@ export class InvalidConversation extends Error {}
 
 const conversations = db.collection<ConversationDocument>("conversations");
 const messages = db.collection<MessageDocument>("messages");
+const inventory = db.collection<{ id: number; status: string }>("inventory");
 let indexesReady: Promise<void> | undefined;
 
 function ensureIndexes(): Promise<void> {
@@ -47,6 +48,15 @@ function ensureIndexes(): Promise<void> {
 
 function isMember(conversation: ConversationDocument, user: string): boolean {
   return conversation.initiator === user || conversation.recipient === user;
+}
+
+async function isAboutCompletedItem(topic: string): Promise<boolean> {
+  const itemId = Number(topic);
+  if (!Number.isSafeInteger(itemId)) return false;
+  return (await inventory.findOne(
+    { id: itemId, status: "COMPLETED" },
+    { projection: { _id: 1 } },
+  )) !== null;
 }
 
 export async function closeConversationsForTopic(topic: string): Promise<void> {
@@ -115,7 +125,12 @@ export class MessagingConcept {
     if (!isMember(thread, sender)) {
       throw new InvalidConversation("You are not a member of this conversation.");
     }
-    if (thread.closedAt !== undefined) throw new ConversationClosed("This conversation is closed.");
+    if (
+      thread.closedAt !== undefined ||
+      await isAboutCompletedItem(thread.topic)
+    ) {
+      throw new ConversationClosed("This conversation is closed.");
+    }
 
     const id = await nextId("messages");
     await messages.insertOne({
@@ -170,6 +185,7 @@ export class MessagingConcept {
   if (!isMember(thread, reader)) {
     throw new NotConversationMember("You are not a member of this conversation.");
   }
+  if (await isAboutCompletedItem(thread.topic)) return [];
 
   const rows = await messages
     .find({ conversation }, { projection: { _id: 0 } })
@@ -204,14 +220,27 @@ export class MessagingConcept {
       { projection: { _id: 0 } },
     )
     .toArray();
+  const topicIds = [...new Set(
+    rows
+      .map(({ topic }) => Number(topic))
+      .filter((id) => Number.isSafeInteger(id)),
+  )];
+  const completedTopicIds = new Set(
+    (await inventory.find(
+      { id: { $in: topicIds }, status: "COMPLETED" },
+      { projection: { id: 1 } },
+    ).toArray()).map(({ id }) => String(id)),
+  );
 
-  return rows.map(({ id, topic, initiator, recipient, closedAt }) => ({
-    conversation: id,
-    topic,
-    initiator,
-    recipient,
-    closedAt,
-  }));
+  return rows
+    .filter(({ topic }) => !completedTopicIds.has(topic))
+    .map(({ id, topic, initiator, recipient, closedAt }) => ({
+      conversation: id,
+      topic,
+      initiator,
+      recipient,
+      closedAt,
+    }));
 }
 
   async closeConversation({ topic }: { topic: string }): Promise<{}> {

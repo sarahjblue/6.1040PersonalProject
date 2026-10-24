@@ -617,8 +617,14 @@ function renderInventory() {
     return {};
   }
   const currentUser = currentUserInput.value.trim();
+  const currentUserClaims = items.filter(
+    (item) => item.status === "CLAIMED" && item.buyer === currentUser,
+  );
+  const otherItems = items.filter(
+    (item) => item.status !== "CLAIMED" || item.buyer !== currentUser,
+  );
 
-  for (const item of items) {
+  for (const item of [...currentUserClaims, ...otherItems]) {
     if (item.status === "COMPLETED") {
       continue;
     }
@@ -1617,7 +1623,10 @@ async function completeTransaction(item: Item, button: HTMLButtonElement) {
     const index = items.findIndex((candidate) => candidate.id === item.id);
     if (index !== -1) items.splice(index, 1);
 
-    statusMessage.textContent = "Transaction completed successfully.";
+    const conversationsLoaded = await loadConversations();
+    if (conversationsLoaded) {
+      statusMessage.textContent = "Transaction completed successfully.";
+    }
     renderInventory();
   } catch (error) {
     statusMessage.textContent =

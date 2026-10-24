@@ -1,10 +1,10 @@
 # Messaging
 
 ## Purpose
-allow users to message one another independently and keep track of what has been sent; deletes messages after the topic has been closed for 24 hours
+allow users to message one another independently and keep track of what has been sent; hides conversations about completed items and deletes messages after a topic has been closed for 24 hours
 
 ## Principle
-after a user starts a conversation with another user about an Item by sending an initial message, the other user can reply; conversations are deleted 24 hours after their topic closes, including when the Item is deleted
+after a user starts a conversation with another user about an Item by sending an initial message, the other user can reply. conversations about completed items and their messages are hidden from both participants but retained. conversations about deleted items are deleted 24 hours after their topic closes.
 
 ## Types
 
@@ -72,7 +72,7 @@ sendMessage(conversation: Conversation, sender: User, content: String): returns 
     then
         refuses INVALID_CONVERSATION "You are not a member of this conversation."
 
-    where conversation is no longer in Conversations
+    where conversation is closed or is about an Item whose status is COMPLETED
 
     then
         refuses CONVERSATION_CLOSED "This conversation has been closed."
@@ -133,5 +133,5 @@ _messages(conversation: Conversation, reader: User) : many (message: Message, se
 
 _conversationsOf(user: User): many(conversation: Conversation, topic: Item, initiator: User, recipient: User, closedAt?: DateTime)
 
-    answers every conversation in which user is the initiator or the recipient
+    answers every conversation in which user is the initiator or the recipient, except conversations about COMPLETED items
 ```

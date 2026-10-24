@@ -226,6 +226,13 @@ describe("inventory", () => {
     ).rejects.toBeInstanceOf(SellerCannotClaim);
     expect(await db.collection("inventory").findOne({ id: item.id })).toEqual(available);
     await inventory.claim({ item, claimer: buyer });
+    const { conversation } = await messaging.startConversation({
+      initiator: buyer,
+      recipient: seller,
+      topic: String(item.id),
+      content: "Is the item still available?",
+    });
+    conversationIds.push(conversation);
     const claimed = await db.collection("inventory").findOne({ id: item.id });
     await expect(
       inventory.claim({ item, claimer: `${testPrefix}-other` }),
@@ -247,6 +254,41 @@ describe("inventory", () => {
     ).rejects.toBeInstanceOf(NotSellerComplete);
     expect(await db.collection("inventory").findOne({ id: item.id })).toEqual(claimed);
     await inventory.transactionCompleted({ item, user: seller });
+    expect(await messaging._conversationsOf({ user: seller })).not.toContainEqual(
+      expect.objectContaining({ conversation }),
+    );
+    expect(await messaging._conversationsOf({ user: buyer })).not.toContainEqual(
+      expect.objectContaining({ conversation }),
+    );
+    expect(await messaging._messages({ conversation, reader: seller })).toEqual([]);
+    expect(await messaging._messages({ conversation, reader: buyer })).toEqual([]);
+    for (const user of [seller, buyer]) {
+      const inbox = await requestJson("/api/messaging/conversations", { user });
+      expect(inbox.response.status).toBe(200);
+      expect(inbox.data).toHaveProperty("result.conversations");
+      expect(inbox.data).not.toHaveProperty(
+        "result.conversations",
+        expect.arrayContaining([expect.objectContaining({ conversation })]),
+      );
+      const hiddenMessages = await requestJson("/api/messaging/messages", {
+        conversation,
+        reader: user,
+      });
+      expect(hiddenMessages.response.status).toBe(200);
+      expect(hiddenMessages.data).toHaveProperty("result.messages", []);
+    }
+    await expect(messaging.sendMessage({
+      conversation,
+      sender: buyer,
+      content: "Follow-up after completion",
+    })).rejects.toBeInstanceOf(ConversationClosed);
+    expect(await db.collection("conversations").findOne({ id: conversation }))
+      .not.toBeNull();
+    expect(await db.collection("messages").countDocuments({ conversation })).toBe(1);
+    await messaging.purgeClosed();
+    expect(await db.collection("conversations").findOne({ id: conversation }))
+      .not.toBeNull();
+    expect(await db.collection("messages").countDocuments({ conversation })).toBe(1);
     expect(await inventory._claimedForUser({ user: seller })).toContainEqual(
       expect.objectContaining({
         item: expect.objectContaining({ id: item.id, status: "COMPLETED" }),

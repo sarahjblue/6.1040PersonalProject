@@ -6,7 +6,7 @@ identify users; prevent one user from pretending to be another; only permit acco
 
 ## Principle
 
-after a user registers with a username, password, and MIT email, their account is immediately active. they can authenticate with that same username and password and be treated each time as the same user.
+after a user registers with a username, password, and MIT email, their account is immediately active. they can authenticate with that same username and password and be treated each time as the same user. automatically sets the account to confirmed.
 
 ## Types
 

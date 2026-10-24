@@ -171,6 +171,7 @@ transactionCompleted(item: Item, user: User) : returns ()
 
     then
         set status to COMPLETED
+        hide conversations about the item from both participants without deleting their messages
         returns
 ```
 
