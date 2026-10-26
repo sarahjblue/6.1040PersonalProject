@@ -16,6 +16,8 @@ One design choice I changed in Inventory is I originally planned for a seller to
 
 Another change is that when an item is deleted, rather than deleting any Conversations about the item, I hide the messages so that they are no longer visible to the user. This change also was implemented into transactionCompleted, where any Conversations about the item become hidden rather than being deleted.
 
+A third change that I made to Inventory is that when a user claims an item, it sends a message to the seller. This change is important for users to notice that their item has been claimed and be able to respond promptly.
+
 
 ### Messaging
 I did not make any major design changes to Messaging.
