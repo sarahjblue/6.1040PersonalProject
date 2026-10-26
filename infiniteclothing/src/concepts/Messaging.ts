@@ -278,3 +278,41 @@ export class MessagingConcept {
     return {};
   }
 }
+
+export async function notifySellerOfClaim({
+  topic,
+  claimer,
+  seller,
+}: {
+  topic: string;
+  claimer: string;
+  seller: string;
+}): Promise<void> {
+  await ensureIndexes();
+
+  const existing = await conversations.findOne({
+    topic,
+    $or: [
+      { initiator: claimer, recipient: seller },
+      { initiator: seller, recipient: claimer },
+    ],
+  });
+  const messaging = new MessagingConcept();
+  const content = "I claimed this item.";
+
+  if (existing) {
+    await messaging.sendMessage({
+      conversation: existing.id,
+      sender: claimer,
+      content,
+    });
+    return;
+  }
+
+  await messaging.startConversation({
+    initiator: claimer,
+    recipient: seller,
+    topic,
+    content,
+  });
+}

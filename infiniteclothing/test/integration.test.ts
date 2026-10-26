@@ -203,6 +203,12 @@ describe("inventory", () => {
     expect(await db.collection("inventory").findOne({ id: -1 })).toBeNull();
 
     await inventory.claim({ item, claimer: buyer });
+    const notificationConversation = await db.collection("conversations")
+      .findOne({ topic: String(item.id) });
+    if (!notificationConversation) {
+      throw new Error("Claim notification conversation was not created.");
+    }
+    conversationIds.push(notificationConversation.id);
     const claimed = await db.collection("inventory").findOne({ id: item.id });
     await expect(inventory.releaseClaim({
       item,
@@ -225,7 +231,6 @@ describe("inventory", () => {
       inventory.claim({ item, claimer: seller }),
     ).rejects.toBeInstanceOf(SellerCannotClaim);
     expect(await db.collection("inventory").findOne({ id: item.id })).toEqual(available);
-    await inventory.claim({ item, claimer: buyer });
     const { conversation } = await messaging.startConversation({
       initiator: buyer,
       recipient: seller,
@@ -233,11 +238,25 @@ describe("inventory", () => {
       content: "Is the item still available?",
     });
     conversationIds.push(conversation);
+    await inventory.claim({ item, claimer: buyer });
+    const claimNotification = await messaging._messages({
+      conversation,
+      reader: seller,
+    });
+    expect(claimNotification).toHaveLength(2);
+    expect(claimNotification[1]).toMatchObject({
+      sender: buyer,
+      content: "I claimed this item.",
+      readStatus: "UNREAD",
+    });
     const claimed = await db.collection("inventory").findOne({ id: item.id });
     await expect(
       inventory.claim({ item, claimer: `${testPrefix}-other` }),
     ).rejects.toBeInstanceOf(ItemNotAvailableToClaim);
     expect(await db.collection("inventory").findOne({ id: item.id })).toEqual(claimed);
+    expect(await db.collection("messages").countDocuments({
+      conversation,
+    })).toBe(2);
 
     const sellerClaims = await inventory._claimedForUser({ user: seller });
     const buyerClaims = await inventory._claimedForUser({ user: buyer });
@@ -284,11 +303,11 @@ describe("inventory", () => {
     })).rejects.toBeInstanceOf(ConversationClosed);
     expect(await db.collection("conversations").findOne({ id: conversation }))
       .not.toBeNull();
-    expect(await db.collection("messages").countDocuments({ conversation })).toBe(1);
+    expect(await db.collection("messages").countDocuments({ conversation })).toBe(2);
     await messaging.purgeClosed();
     expect(await db.collection("conversations").findOne({ id: conversation }))
       .not.toBeNull();
-    expect(await db.collection("messages").countDocuments({ conversation })).toBe(1);
+    expect(await db.collection("messages").countDocuments({ conversation })).toBe(2);
     expect(await inventory._claimedForUser({ user: seller })).toContainEqual(
       expect.objectContaining({
         item: expect.objectContaining({ id: item.id, status: "COMPLETED" }),
@@ -315,6 +334,39 @@ describe("inventory", () => {
     expect(
       (await inventory._available()).some(({ item: row }) => row.id === item.id),
     ).toBe(false);
+  });
+
+  test("claiming an item starts a seller notification conversation when no thread exists", async () => {
+    const seller = `${testPrefix}-claim-notification-seller`;
+    const buyer = `${testPrefix}-claim-notification-buyer`;
+    const item = await postItem(`${testPrefix}-claim-notification`, seller);
+
+    expect(await messaging._conversationsOf({ user: seller })).not.toContainEqual(
+      expect.objectContaining({ topic: String(item.id) }),
+    );
+
+    await inventory.claim({ item, claimer: buyer });
+
+    const sellerConversations = await messaging._conversationsOf({ user: seller });
+    const conversation = sellerConversations.find(
+      (candidate) => candidate.topic === String(item.id),
+    );
+    expect(conversation).toMatchObject({
+      initiator: buyer,
+      recipient: seller,
+    });
+    if (!conversation) throw new Error("Claim notification conversation was not created.");
+    conversationIds.push(conversation.conversation);
+    expect(await messaging._messages({
+      conversation: conversation.conversation,
+      reader: seller,
+    })).toEqual([
+      expect.objectContaining({
+        sender: buyer,
+        content: "I claimed this item.",
+        readStatus: "UNREAD",
+      }),
+    ]);
   });
 
   test("deleting an item closes its conversations and purges them after 24 hours", async () => {
@@ -453,6 +505,12 @@ describe("inventory", () => {
     const buyer = `${testPrefix}-release-buyer`;
     const item = await postItem(`${testPrefix}-release`, seller);
     await inventory.claim({ item, claimer: buyer });
+    const claimConversation = await db.collection("conversations")
+      .findOne({ topic: String(item.id) });
+    if (!claimConversation) {
+      throw new Error("Claim notification conversation was not created.");
+    }
+    conversationIds.push(claimConversation.id);
 
     await inventory.releaseClaim({ item, user: buyer });
     const restored = (await inventory._available()).find(
@@ -846,6 +904,21 @@ describe("HTTP compositions", () => {
       claimer: buyerName,
     });
     expect(claim.response.status).toBe(200);
+    const claimMessages = await requestJson("/api/messaging/messages", {
+      conversation,
+      reader: sellerName,
+    });
+    expect(claimMessages.response.status).toBe(200);
+    expect(claimMessages.data).toHaveProperty(
+      "result.messages",
+      expect.arrayContaining([
+        expect.objectContaining({
+          sender: buyerName,
+          content: "I claimed this item.",
+          readStatus: "UNREAD",
+        }),
+      ]),
+    );
     const claimed = await requestJson("/api/inventory/claimed", {
       user: buyerName,
     });

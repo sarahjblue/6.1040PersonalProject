@@ -1,5 +1,5 @@
 import {db, nextId} from "../db.ts";
-import { closeConversationsForTopic } from "./Messaging.ts";
+import { closeConversationsForTopic, notifySellerOfClaim } from "./Messaging.ts";
 
 type Status = "AVAILABLE" | "CLAIMED" | "COMPLETED";
 
@@ -84,6 +84,12 @@ export class InventoryConcept{
         if (!result.modifiedCount){
             throw new ItemNotAvailableToClaim("This item can not be claimed at this time.");
         }
+
+        await notifySellerOfClaim({
+            topic: String(found.id),
+            claimer,
+            seller: found.seller,
+        });
 
         return {};
     }

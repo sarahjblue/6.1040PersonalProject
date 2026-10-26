@@ -79,6 +79,7 @@ claim(item: Item, claimer: User) : returns ()
 
     then
         set status to CLAIMED and set its buyer to claimer.
+        notify the seller with a message in the existing conversation about the item between the seller and claimer, or create a conversation between them if none exists.
         returns
 
 
