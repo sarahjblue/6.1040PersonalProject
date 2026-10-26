@@ -1,10 +1,10 @@
 # Messaging
 
 ## Purpose
-allow users to message one another independently and keep track of what has been sent; hides conversations about completed items and deletes messages after a topic has been closed for 24 hours
+allow users to message one another independently and keep track of what has been sent; hides conversations about completed or deleted items and deletes messages after a topic has been closed for 24 hours
 
 ## Principle
-after a user starts a conversation with another user about an Item by sending an initial message, the other user can reply. conversations about completed items and their messages are hidden from both participants but retained. conversations about deleted items are deleted 24 hours after their topic closes.
+after a user starts a conversation with another user about an Item by sending an initial message, the other user can reply. conversations about completed or deleted items and their messages are hidden from both participants. hidden messages are retained; conversations about deleted items are deleted 24 hours after their topic closes.
 
 ## Types
 
@@ -129,9 +129,9 @@ purgeClosed(): returns ()
 _messages(conversation: Conversation, reader: User) : many (message: Message, sender: User, content: String, sentAt: DateTime, readStatus: ReadStatus)
 
     answers the messages of the conversation in the order they were sent
-    answers no rows when the conversation is unknown or reader is neither its initiator nor its recipient
+    answers no rows when the conversation is unknown, reader is neither its initiator nor its recipient, or its Item is completed or deleted
 
 _conversationsOf(user: User): many(conversation: Conversation, topic: Item, initiator: User, recipient: User, closedAt?: DateTime)
 
-    answers every conversation in which user is the initiator or the recipient, except conversations about COMPLETED items
+    answers every conversation in which user is the initiator or the recipient, except conversations about completed or deleted Items
 ```

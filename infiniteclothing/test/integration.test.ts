@@ -385,6 +385,37 @@ describe("inventory", () => {
     for (const conversation of [related.conversation, relatedSecond.conversation]) {
       expect(await db.collection("conversations").findOne({ id: conversation }))
         .not.toBeNull();
+      expect(inbox.data).not.toHaveProperty(
+        "result.conversations",
+        expect.arrayContaining([expect.objectContaining({ conversation })]),
+      );
+    }
+    expect(await messaging._messages({
+      conversation: related.conversation,
+      reader: buyer,
+    })).toEqual([]);
+    expect(await messaging._messages({
+      conversation: related.conversation,
+      reader: seller,
+    })).toEqual([]);
+    const hiddenMessages = await requestJson("/api/messaging/messages", {
+      conversation: related.conversation,
+      reader: buyer,
+    });
+    expect(hiddenMessages.response.status).toBe(200);
+    expect(hiddenMessages.data).toHaveProperty("result.messages", []);
+    expect(await db.collection("messages").countDocuments({
+      conversation: related.conversation,
+    })).toBe(2);
+    const sellerInbox = await requestJson("/api/messaging/conversations", {
+      user: seller,
+    });
+    expect(sellerInbox.response.status).toBe(200);
+    for (const conversation of [related.conversation, relatedSecond.conversation]) {
+      expect(sellerInbox.data).not.toHaveProperty(
+        "result.conversations",
+        expect.arrayContaining([expect.objectContaining({ conversation })]),
+      );
     }
 
     await db.collection("conversations").updateMany(
