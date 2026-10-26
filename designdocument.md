@@ -12,7 +12,18 @@ Between P1 and P4, I made the design to not have the confirmation aspect of MITU
 ### Inventory
 One design choice I changed in Inventory is I originally planned for a seller to not have to list a price when posting an item. This was originally intended to reduce friction in the item posting process. Throughout the design and building process, I thought further and realized that requiring a price caused the seller very little additional friction, but might create too much friction for a buyer. Therefore, I changed the design to require a price from a seller. Since I require the seller to enter a price, I also decided to enforce that the seller enter a valid number to represent the price.
 
-Another change is that when an item is deleted
+Another change is that when an item is deleted, rather than deleting any Conversations about the item, I hide the messages so that they are no longer visible to the user. This change also was implemented into transactionCompleted, where any Conversations about the item become hidden rather than being deleted.
+
+
+### Messaging
+I did not make any major design changes to Messaging.
+
+
+### Sessioning
+I did not make any major design changes to Sessioning.
+
+### Tagging
+I did not make any major design changes to Tagging.
 
 
 ### Other changes
