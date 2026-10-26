@@ -32,6 +32,7 @@ import {
   CompleteUnknownItem,
   NotClaimed,
   NotSellerComplete,
+  InvalidPrice,
 } from "./concepts/Inventory.ts";
 
 import{
@@ -74,6 +75,7 @@ const inventory = registerConcept({
     COMPLETE_UNKNOWN_ITEM: CompleteUnknownItem,
     NOT_CLAIMED: NotClaimed,
     NOT_SELLER_COMPLETE: NotSellerComplete,
+    INVALID_PRICE: InvalidPrice
   },
 });
 

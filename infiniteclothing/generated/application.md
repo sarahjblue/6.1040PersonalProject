@@ -14,8 +14,9 @@ Defined in [Inventory](../design/concepts/Inventory.md), line 1.
 
 #### Actions
 
-- `post(name: String, description?: String, price?: String, seller: User, image: Image) : returns (item: Item)`
+- `post(name: String, description?: String, price: String, seller: User, image: Image) : returns (item: Item)`
   - Refuses `ITEM_ALREADY_POSTED`: You already have posted an item with that name and description.
+  - Refuses `INVALID_PRICE`: Please enter a valid price.
 - `claim(item: Item, claimer: User) : returns ()`
   - Refuses `CLAIM_UNKNOWN_ITEM`: There is no such item for sale.
   - Refuses `ITEM_NOT_AVAILABLE_TO_CLAIM`: This item can not be claimed at this time.

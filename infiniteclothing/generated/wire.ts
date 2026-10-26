@@ -84,7 +84,7 @@ export type ApplicationWire = {
     output: {
       "item": "item";
     };
-    error: { error: AppWideError | "INVALID_INPUT" | "ITEM_ALREADY_POSTED" };
+    error: { error: AppWideError | "INVALID_INPUT" | "INVALID_PRICE" | "ITEM_ALREADY_POSTED" };
   };
   "/inventory/releaseClaim": {
     input: {

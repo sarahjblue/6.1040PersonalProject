@@ -36,14 +36,20 @@ a set of Items with
 ## Actions
 
 ```actions
-post(name: String, description?: String, price?: String, seller: User, image: Image) : returns (item: Item)
+post(name: String, description?: String, price: String, seller: User, image: Image) : returns (item: Item)
 
     where an item with the same name, seller and description is in Items
 
     then
         refuses ITEM_ALREADY_POSTED "You already have posted an item with that name and description."
 
-    where no item has the same name, seller, and description is in Items
+    where price is not a valid $(number)
+
+    then
+        refuses INVALID_PRICE "Please enter a valid price."
+
+
+    where no item has the same name, seller, and description is in Items and price is a valid $(number)
 
     then
         create a new Item with name, description, price, seller, and image

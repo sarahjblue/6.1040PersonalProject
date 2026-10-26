@@ -30,12 +30,13 @@ export class ReleaseNotBuyer extends Error {}
 export class CompleteUnknownItem extends Error {}
 export class NotClaimed extends Error {}
 export class NotSellerComplete extends Error {}
+export class InvalidPrice extends Error {}
 
 const items = db.collection<Item>("inventory");
 
 export class InventoryConcept{
 
-    async post({name, seller, image, description, price}: {name: string, seller: string, image: string, description?: string, price?: string}): Promise<{item: Item}> {
+    async post({name, seller, image, description, price}: {name: string, seller: string, image: string, description?: string, price: string}): Promise<{item: Item}> {
         const duplicate = await items.findOne({
             name,
             seller,
@@ -43,6 +44,9 @@ export class InventoryConcept{
         });
         if (duplicate) {
             throw new ItemAlreadyPosted("You already have posted an item with that name and description.");
+        }
+        if(!Number(price.substring(1,))){
+            throw new InvalidPrice("Please enter a valid price.");
         }
 
         const id = await nextId("inventory");

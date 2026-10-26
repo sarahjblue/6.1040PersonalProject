@@ -874,13 +874,59 @@ function extractSearchIds(data: unknown): Set<number> | undefined {
 
 async function readError(response: Response): Promise<string> {
   const text = await response.text();
-  if (!text) return `Request failed (${response.status}).`;
-
+  let category: string | undefined;
   try {
-    const body = JSON.parse(text) as { error?: string; message?: string };
-    return body.message ?? body.error ?? text;
+    const body: unknown = JSON.parse(text);
+    if (
+      body &&
+      typeof body === "object" &&
+      "error" in body &&
+      typeof body.error === "string"
+    ) {
+      category = body.error;
+    }
   } catch {
-    return text;
+    // Non-JSON responses are handled using their HTTP status below.
+  }
+
+  const requestPath = response.url
+    ? new URL(response.url).pathname
+    : "";
+  if (
+    category === "INVALID_REQUEST" &&
+    requestPath.endsWith("/inventory/post")
+  ) {
+    return "Check the item details and enter a valid price.";
+  }
+
+  const messages: Record<string, string> = {
+    INVALID_REQUEST: "Some information is missing or invalid. Check it and try again.",
+    UNAUTHORIZED: "You are not authorized to do that. Sign in and try again.",
+    FORBIDDEN: "You do not have permission to do that.",
+    NOT_FOUND: "The requested item or conversation could not be found. Refresh and try again.",
+    CONFLICT: "This action conflicts with the current state. Refresh and try again.",
+    INTERNAL_ERROR: "Something went wrong. Please try again.",
+    UNAVAILABLE: "The service is temporarily unavailable. Please try again shortly.",
+  };
+  if (category && messages[category]) {
+    return messages[category];
+  }
+
+  switch (response.status) {
+    case 400:
+      return "Some information is missing or invalid. Check it and try again.";
+    case 401:
+      return "You are not authorized to do that. Sign in and try again.";
+    case 403:
+      return "You do not have permission to do that.";
+    case 404:
+      return "The requested item or conversation could not be found. Refresh and try again.";
+    case 409:
+      return "This action conflicts with the current state. Refresh and try again.";
+    case 503:
+      return "The service is temporarily unavailable. Please try again shortly.";
+    default:
+      return "Something went wrong. Please try again.";
   }
 }
 
